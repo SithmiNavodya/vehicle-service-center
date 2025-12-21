@@ -88,7 +88,6 @@ public class ServiceRecordController {
         }
     }
 
-    // Note: Customer endpoint might not work since table doesn't have customer_id
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<?> getServiceRecordsByCustomer(@PathVariable Long customerId) {
         try {
@@ -106,4 +105,7 @@ public class ServiceRecordController {
         List<ServiceRecord> records = service.getServiceRecordsByVehicleId(vehicleId);
         return ResponseEntity.ok(records);
     }
+
+    // Remove the test endpoint for now or add proper imports
+    // We'll create a separate test controller if needed
 }

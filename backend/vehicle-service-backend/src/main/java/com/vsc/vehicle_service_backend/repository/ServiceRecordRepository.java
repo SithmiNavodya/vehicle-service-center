@@ -5,22 +5,32 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ServiceRecordRepository extends JpaRepository<ServiceRecord, Long> {
 
-    // Find by vehicle_id
+    // Find by record_id (SR_1, SR_2, etc.)
+    Optional<ServiceRecord> findByRecordId(String recordId);
+
+    // Find by customer ID
+    List<ServiceRecord> findByCustomerId(Long customerId);
+
+    // Find by vehicle ID
     List<ServiceRecord> findByVehicleId(Long vehicleId);
 
     // Find by status
     List<ServiceRecord> findByStatus(String status);
 
-    // Find by vehicle_id and status
-    List<ServiceRecord> findByVehicleIdAndStatus(Long vehicleId, String status);
+    // Find by status order by created date
+    List<ServiceRecord> findByStatusOrderByCreatedAtDesc(String status);
 
-    // Find by record_id
-    ServiceRecord findByRecordId(String recordId);
+    // Check if record ID exists
+    boolean existsByRecordId(String recordId);
 
-    // For counting records by status (needed for statistics)
-    Long countByStatus(String status);
+    // Find all ordered by created date
+    List<ServiceRecord> findAllByOrderByCreatedAtDesc();
+
+    // Find all by customer ID ordered by created date
+    List<ServiceRecord> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 }
