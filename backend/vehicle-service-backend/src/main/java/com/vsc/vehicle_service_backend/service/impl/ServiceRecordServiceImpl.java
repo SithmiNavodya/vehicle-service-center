@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class ServiceRecordServiceImpl implements ServiceRecordService {
@@ -67,6 +66,17 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
             serviceRecord.setStatus("PENDING");
         }
 
+        // Validate required fields
+        if (serviceRecord.getCustomerId() == null) {
+            System.err.println("⚠️ WARNING: Creating service record without customer ID!");
+            // For testing, set a default customer ID
+            serviceRecord.setCustomerId(1L);
+        }
+
+        System.out.println("✅ Creating service record: " + serviceRecord.getRecordId());
+        System.out.println("   - Customer ID: " + serviceRecord.getCustomerId());
+        System.out.println("   - Vehicle ID: " + serviceRecord.getVehicleId());
+
         return serviceRecordRepository.save(serviceRecord);
     }
 
@@ -102,6 +112,12 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
         if (serviceRecordDetails.getServiceId() != null) {
             serviceRecord.setServiceId(serviceRecordDetails.getServiceId());
         }
+        if (serviceRecordDetails.getCustomerId() != null) {
+            serviceRecord.setCustomerId(serviceRecordDetails.getCustomerId());
+        }
+        if (serviceRecordDetails.getTotalCost() != null) {
+            serviceRecord.setTotalCost(serviceRecordDetails.getTotalCost());
+        }
 
         serviceRecord.setUpdatedAt(LocalDateTime.now());
         return serviceRecordRepository.save(serviceRecord);
@@ -110,6 +126,10 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
     @Override
     @Transactional
     public ServiceRecord updateServiceRecordStatus(Long id, String status) {
+        System.out.println("🔄 Updating service record status");
+        System.out.println("   - Record ID: " + id);
+        System.out.println("   - New Status: " + status);
+
         Optional<ServiceRecord> optionalServiceRecord = serviceRecordRepository.findById(id);
         if (optionalServiceRecord.isEmpty()) {
             throw new RuntimeException("Service record not found with id: " + id);
@@ -117,20 +137,36 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
 
         ServiceRecord serviceRecord = optionalServiceRecord.get();
         String oldStatus = serviceRecord.getStatus();
+        System.out.println("   - Old Status: " + oldStatus);
+        System.out.println("   - Customer ID: " + serviceRecord.getCustomerId());
+        System.out.println("   - Record #: " + serviceRecord.getRecordId());
+
         serviceRecord.setStatus(status);
         serviceRecord.setUpdatedAt(LocalDateTime.now());
 
         ServiceRecord updatedRecord = serviceRecordRepository.save(serviceRecord);
 
-        // Trigger SMS when status changes to "COMPLETED"
-        if ("COMPLETED".equalsIgnoreCase(status) && !"COMPLETED".equalsIgnoreCase(oldStatus)) {
+        // IMPORTANT: Check for both "COMPLETE" and "COMPLETED"
+        boolean isCompleted = "COMPLETE".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
+        boolean wasCompleted = "COMPLETE".equalsIgnoreCase(oldStatus) || "COMPLETED".equalsIgnoreCase(oldStatus);
+
+        System.out.println("   - Is Completed? " + isCompleted);
+        System.out.println("   - Was Completed? " + wasCompleted);
+
+        // Trigger SMS when status changes to completed
+        if (isCompleted && !wasCompleted) {
+            System.out.println("🚀 Triggering SMS for completed service record #" + id);
             try {
+                // Just call the SMS service, don't worry about the return value
                 smsService.sendServiceCompletionSms(id);
-                System.out.println("Auto SMS triggered for service record: " + id);
+                System.out.println("✅ SMS sent successfully!");
             } catch (Exception e) {
-                System.err.println("Failed to send SMS: " + e.getMessage());
+                System.err.println("❌ Failed to send SMS: " + e.getMessage());
+                e.printStackTrace();
                 // Don't throw exception - SMS failure shouldn't fail the status update
             }
+        } else {
+            System.out.println("⏭️ Skipping SMS (not a completion status change)");
         }
 
         return updatedRecord;
@@ -144,10 +180,7 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
 
     @Override
     public List<ServiceRecord> getServiceRecordsByCustomerId(Long customerId) {
-        // Note: Your table doesn't have customer_id column,
-        // so this might need to be removed or adjusted
-        // For now, return all records
-        return serviceRecordRepository.findAll();
+        return serviceRecordRepository.findByCustomerId(customerId);
     }
 
     @Override

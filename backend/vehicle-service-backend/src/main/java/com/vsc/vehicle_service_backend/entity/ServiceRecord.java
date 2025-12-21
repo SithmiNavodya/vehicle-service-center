@@ -36,6 +36,14 @@ public class ServiceRecord {
     @Column(name = "service_id")
     private Long serviceId;
 
+    // ADD THIS - VERY IMPORTANT!
+    @Column(name = "customer_id", nullable = false)
+    private Long customerId;
+
+    // Add this if not present
+    @Column(name = "total_cost")
+    private Double totalCost = 0.0;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -46,6 +54,7 @@ public class ServiceRecord {
     public ServiceRecord() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.status = "PENDING"; // Default status
     }
 
     // Getters and Setters
@@ -111,6 +120,23 @@ public class ServiceRecord {
 
     public void setServiceId(Long serviceId) {
         this.serviceId = serviceId;
+    }
+
+    // ADD THESE GETTERS AND SETTERS
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
+    }
+
+    public Double getTotalCost() {
+        return totalCost;
+    }
+
+    public void setTotalCost(Double totalCost) {
+        this.totalCost = totalCost;
     }
 
     public LocalDateTime getCreatedAt() {
