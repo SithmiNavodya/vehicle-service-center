@@ -1,0 +1,50 @@
+package com.vsc.vehicle_service_backend.repository;
+
+import com.vsc.vehicle_service_backend.entity.SparePartIncome;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface SparePartIncomeRepository extends JpaRepository<SparePartIncome, Long> {
+
+    // Change from SparePartIncome.IncomeStatus to String
+    List<SparePartIncome> findByStatus(String status);
+
+    Optional<SparePartIncome> findByOrderNumber(String orderNumber);
+
+    @Query("SELECT i FROM SparePartIncome i WHERE i.orderDate BETWEEN :startDate AND :endDate")
+    List<SparePartIncome> findByOrderDateBetween(@Param("startDate") LocalDate startDate,
+                                                 @Param("endDate") LocalDate endDate);
+
+    // Chart data queries
+    @Query("SELECT sp.brand, SUM(ii.quantityReceived) " +
+            "FROM SparePartIncomeItem ii " +
+            "JOIN ii.sparePart sp " +
+            "JOIN sp.category c " +
+            "WHERE c.id = :categoryId " +
+            "AND ii.status = 'RECEIVED' " +
+            "AND ii.income.orderDate BETWEEN :startDate AND :endDate " +
+            "GROUP BY sp.brand")
+    List<Object[]> findIncomeByBrandAndCategory(@Param("categoryId") Long categoryId,
+                                                @Param("startDate") LocalDate startDate,
+                                                @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT DATE_FORMAT(i.orderDate, '%Y-%m'), SUM(ii.quantityReceived) " +
+            "FROM SparePartIncomeItem ii " +
+            "JOIN ii.sparePart sp " +
+            "JOIN sp.category c " +
+            "JOIN ii.income i " +
+            "WHERE c.id = :categoryId " +
+            "AND ii.status = 'RECEIVED' " +
+            "AND i.orderDate BETWEEN :startDate AND :endDate " +
+            "GROUP BY DATE_FORMAT(i.orderDate, '%Y-%m') " +
+            "ORDER BY DATE_FORMAT(i.orderDate, '%Y-%m')")
+    List<Object[]> findMonthlyIncomeByCategory(@Param("categoryId") Long categoryId,
+                                               @Param("startDate") LocalDate startDate,
+                                               @Param("endDate") LocalDate endDate);
+}
