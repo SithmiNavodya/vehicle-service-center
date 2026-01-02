@@ -1,47 +1,38 @@
+// src/main/java/com/vsc/vehicle_service_backend/controller/SparePartController.java
 package com.vsc.vehicle_service_backend.controller;
 
 import com.vsc.vehicle_service_backend.dto.SparePartRequest;
 import com.vsc.vehicle_service_backend.dto.SparePartResponse;
 import com.vsc.vehicle_service_backend.service.SparePartService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/spare-parts")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:3000")
 public class SparePartController {
 
-    @Autowired
-    private SparePartService sparePartService;
+    private final SparePartService sparePartService;
 
     @GetMapping
     public ResponseEntity<List<SparePartResponse>> getAllSpareParts() {
         return ResponseEntity.ok(sparePartService.getAllSpareParts());
     }
 
-    @GetMapping("/low-stock")
-    public ResponseEntity<List<SparePartResponse>> getLowStockParts() {
-        return ResponseEntity.ok(sparePartService.getLowStockParts());
-    }
-
-    @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<SparePartResponse>> getPartsByCategory(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(sparePartService.getPartsByCategory(categoryId));
-    }
-
     @GetMapping("/{id}")
-    public ResponseEntity<SparePartResponse> getPartById(@PathVariable Long id) {
-        return ResponseEntity.ok(sparePartService.getPartById(id));
+    public ResponseEntity<SparePartResponse> getSparePartById(@PathVariable Long id) {
+        return ResponseEntity.ok(sparePartService.getSparePartById(id));
     }
 
     @PostMapping
     public ResponseEntity<SparePartResponse> createSparePart(@Valid @RequestBody SparePartRequest request) {
-        return ResponseEntity.ok(sparePartService.createSparePart(request));
+        return new ResponseEntity<>(sparePartService.createSparePart(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
@@ -57,8 +48,19 @@ public class SparePartController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/stock-report")
-    public ResponseEntity<Map<String, Object>> getStockReport() { // Changed return type
-        return ResponseEntity.ok(sparePartService.getStockReport());
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<SparePartResponse>> getSparePartsByCategory(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(sparePartService.getSparePartsByCategory(categoryId));
+    }
+
+    @GetMapping("/supplier/{supplierId}")
+    public ResponseEntity<List<SparePartResponse>> getSparePartsBySupplier(@PathVariable Long supplierId) {
+        return ResponseEntity.ok(sparePartService.getSparePartsBySupplier(supplierId));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<SparePartResponse>> searchSpareParts(@RequestParam String q) {
+        // Implement search logic here or in service
+        return ResponseEntity.ok(sparePartService.getAllSpareParts()); // Temporary
     }
 }
