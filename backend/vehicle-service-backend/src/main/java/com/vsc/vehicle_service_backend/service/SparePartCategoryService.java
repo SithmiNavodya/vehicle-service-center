@@ -1,24 +1,13 @@
 package com.vsc.vehicle_service_backend.service;
 
-import com.vsc.vehicle_service_backend.dto.SparePartCategoryRequest;
-import com.vsc.vehicle_service_backend.dto.SparePartCategoryResponse;
+import com.vsc.vehicle_service_backend.entity.SparePartCategory;
 import java.util.List;
 
 public interface SparePartCategoryService {
-
-    SparePartCategoryResponse createCategory(SparePartCategoryRequest request);
-
-    SparePartCategoryResponse getCategoryById(Long id);
-
-    SparePartCategoryResponse getCategoryByCode(String categoryCode);
-
-    List<SparePartCategoryResponse> getAllCategories();
-
-    SparePartCategoryResponse updateCategory(Long id, SparePartCategoryRequest request);
-
+    List<SparePartCategory> getAllCategories();
+    SparePartCategory getCategoryById(Long id);
+    SparePartCategory createCategory(SparePartCategory category);
+    SparePartCategory updateCategory(Long id, SparePartCategory category);
     void deleteCategory(Long id);
-
-    boolean existsByCategoryCode(String categoryCode);
-
-    boolean existsByCategoryName(String categoryName);
+    List<SparePartCategory> searchCategories(String query);
 }

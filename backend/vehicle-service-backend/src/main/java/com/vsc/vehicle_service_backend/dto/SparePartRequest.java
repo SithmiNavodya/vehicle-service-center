@@ -1,47 +1,35 @@
+// src/main/java/com/vsc/vehicle_service_backend/dto/SparePartRequest.java
 package com.vsc.vehicle_service_backend.dto;
 
-import java.time.LocalDateTime;
+import lombok.Data;
+import jakarta.validation.constraints.*;
 
+@Data
 public class SparePartRequest {
-    private String partCode;
+    @NotBlank(message = "Part name is required")
+    @Size(min = 2, max = 100, message = "Part name must be between 2 and 100 characters")
     private String partName;
+
     private String brand;
     private String model;
+
+    @NotNull(message = "Price is required")
+    @Positive(message = "Price must be positive")
     private Double price;
+
+    @NotNull(message = "Quantity is required")
+    @Min(value = 0, message = "Quantity cannot be negative")
     private Integer quantity;
+
+    @NotNull(message = "Minimum quantity is required")
+    @Min(value = 1, message = "Minimum quantity must be at least 1")
     private Integer minQuantity;
+
     private String imagePath;
+
+    @NotNull(message = "Category ID is required")
     private Long categoryId;
+
+    @NotNull(message = "Supplier ID is required")
     private Long supplierId;
-
-    // Getters and Setters
-    public String getPartCode() { return partCode; }
-    public void setPartCode(String partCode) { this.partCode = partCode; }
-
-    public String getPartName() { return partName; }
-    public void setPartName(String partName) { this.partName = partName; }
-
-    public String getBrand() { return brand; }
-    public void setBrand(String brand) { this.brand = brand; }
-
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
-
-    public Double getPrice() { return price; }
-    public void setPrice(Double price) { this.price = price; }
-
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
-
-    public Integer getMinQuantity() { return minQuantity; }
-    public void setMinQuantity(Integer minQuantity) { this.minQuantity = minQuantity; }
-
-    public String getImagePath() { return imagePath; }
-    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
-
-    public Long getCategoryId() { return categoryId; }
-    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
-
-    public Long getSupplierId() { return supplierId; }
-    public void setSupplierId(Long supplierId) { this.supplierId = supplierId; }
 }

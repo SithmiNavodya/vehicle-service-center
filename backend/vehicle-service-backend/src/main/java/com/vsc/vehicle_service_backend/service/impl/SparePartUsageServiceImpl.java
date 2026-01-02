@@ -1,3 +1,4 @@
+// src/main/java/com/vsc/vehicle_service_backend/service/impl/SparePartUsageServiceImpl.java
 package com.vsc.vehicle_service_backend.service.impl;
 
 import com.vsc.vehicle_service_backend.dto.SparePartUsageRequest;
@@ -5,7 +6,7 @@ import com.vsc.vehicle_service_backend.dto.SparePartUsageResponse;
 import com.vsc.vehicle_service_backend.entity.*;
 import com.vsc.vehicle_service_backend.repository.*;
 import com.vsc.vehicle_service_backend.service.SparePartUsageService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,196 +17,259 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SparePartUsageServiceImpl implements SparePartUsageService {
 
-    @Autowired
-    private SparePartUsageRepository usageRepository;
+    private final SparePartUsageRepository sparePartUsageRepository;
+    private final SparePartRepository sparePartRepository;
+    private final ServiceRecordRepository serviceRecordRepository;
+    private final VehicleRepository vehicleRepository;
+    private final SparePartCategoryRepository categoryRepository;
 
-    @Autowired
-    private SparePartRepository sparePartRepository;
-
-    @Autowired
-    private ServiceRecordRepository serviceRecordRepository;
-
-    @Autowired
-    private VehicleRepository vehicleRepository;
-
+    // 1. Get all usages
     @Override
     public List<SparePartUsageResponse> getAllUsages() {
-        return usageRepository.findAll().stream()
+        return sparePartUsageRepository.findAll().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
+    // 2. Get usage by ID
     @Override
     public SparePartUsageResponse getUsageById(Long id) {
-        SparePartUsage usage = usageRepository.findById(id)
+        SparePartUsage usage = sparePartUsageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usage record not found with id: " + id));
         return convertToResponse(usage);
     }
 
+    // 3. Create usage (same as recordUsage)
     @Override
-    public List<SparePartUsageResponse> getUsagesByServiceRecord(Long serviceRecordId) {
-        return usageRepository.findByServiceRecordId(serviceRecordId).stream()
+    public SparePartUsageResponse createUsage(SparePartUsageRequest request) {
+        return recordUsage(request); // Call existing recordUsage method
+    }
+
+    // 4. Delete usage
+    @Override
+    @Transactional
+    public void deleteUsage(Long id) {
+        SparePartUsage usage = sparePartUsageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usage record not found with id: " + id));
+
+        // Return stock to inventory
+        for (SparePartUsageItem item : usage.getItems()) {
+            SparePart sparePart = item.getSparePart();
+            sparePart.setQuantity(sparePart.getQuantity() + item.getQuantityUsed());
+            sparePartRepository.save(sparePart);
+        }
+
+        sparePartUsageRepository.delete(usage);
+    }
+
+    // 5. Get usage chart data
+    @Override
+    public Map<String, Object> getUsageChartData(Long categoryId) {
+        Map<String, Object> result = new HashMap<>();
+
+        // Get category
+        SparePartCategory category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        // Get all parts in this category
+        List<SparePart> categoryParts = sparePartRepository.findByCategory(category);
+
+        // Get usage data for last 6 months
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusMonths(6);
+
+        List<SparePartUsage> usages = sparePartUsageRepository.findByUsageDateBetween(startDate, endDate);
+
+        // Filter usages for this category
+        List<SparePartUsage> categoryUsages = usages.stream()
+                .filter(usage -> usage.getItems().stream()
+                        .anyMatch(item -> categoryParts.contains(item.getSparePart())))
+                .collect(Collectors.toList());
+
+        // Prepare chart data
+        List<Map<String, Object>> monthlyData = new ArrayList<>();
+        Map<String, Double> monthlyTotals = new HashMap<>();
+
+        for (SparePartUsage usage : categoryUsages) {
+            String month = usage.getUsageDate().getMonth().toString();
+            double total = usage.getTotalCost() != null ? usage.getTotalCost().doubleValue() : 0.0;
+            monthlyTotals.merge(month, total, Double::sum);
+        }
+
+        for (Map.Entry<String, Double> entry : monthlyTotals.entrySet()) {
+            Map<String, Object> monthData = new HashMap<>();
+            monthData.put("month", entry.getKey());
+            monthData.put("totalCost", entry.getValue());
+            monthData.put("usageCount", categoryUsages.stream()
+                    .filter(u -> u.getUsageDate().getMonth().toString().equals(entry.getKey()))
+                    .count());
+            monthlyData.add(monthData);
+        }
+
+        result.put("monthlyData", monthlyData);
+        result.put("categoryName", category.getCategoryName());
+        result.put("totalUsages", categoryUsages.size());
+        result.put("totalCost", categoryUsages.stream()
+                .mapToDouble(u -> u.getTotalCost() != null ? u.getTotalCost().doubleValue() : 0.0)
+                .sum());
+
+        return result;
+    }
+
+    // 6. Get stock flow data
+    @Override
+    public Map<String, Object> getStockFlowData(Long categoryId) {
+        Map<String, Object> result = new HashMap<>();
+
+        // Get category
+        SparePartCategory category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        // Get all parts in this category
+        List<SparePart> categoryParts = sparePartRepository.findByCategory(category);
+
+        // Get usage data for last 3 months
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusMonths(3);
+
+        List<SparePartUsage> usages = sparePartUsageRepository.findByUsageDateBetween(startDate, endDate);
+
+        // Filter usages for this category
+        List<SparePartUsage> categoryUsages = usages.stream()
+                .filter(usage -> usage.getItems().stream()
+                        .anyMatch(item -> categoryParts.contains(item.getSparePart())))
+                .collect(Collectors.toList());
+
+        // Prepare stock flow data
+        List<Map<String, Object>> flowData = new ArrayList<>();
+
+        for (SparePart part : categoryParts) {
+            int totalUsed = categoryUsages.stream()
+                    .flatMap(usage -> usage.getItems().stream())
+                    .filter(item -> item.getSparePart().getId().equals(part.getId()))
+                    .mapToInt(SparePartUsageItem::getQuantityUsed)
+                    .sum();
+
+            if (totalUsed > 0) {
+                Map<String, Object> partData = new HashMap<>();
+                partData.put("partCode", part.getPartCode());
+                partData.put("partName", part.getPartName());
+                partData.put("currentStock", part.getQuantity());
+                partData.put("totalUsed", totalUsed);
+                partData.put("usageRate", (double) totalUsed / 3); // per month
+                flowData.add(partData);
+            }
+        }
+
+        result.put("flowData", flowData);
+        result.put("categoryName", category.getCategoryName());
+        result.put("totalParts", categoryParts.size());
+        result.put("activeParts", flowData.size());
+
+        return result;
+    }
+
+    // 7. Existing recordUsage method (keep this)
+    @Override
+    @Transactional
+    public SparePartUsageResponse recordUsage(SparePartUsageRequest request) {
+        // Validate spare part exists
+        SparePart sparePart = sparePartRepository.findById(request.getSparePartId())
+                .orElseThrow(() -> new RuntimeException("Spare part not found with id: " + request.getSparePartId()));
+
+        // Validate service record exists if provided
+        ServiceRecord serviceRecord = null;
+        if (request.getServiceRecordId() != null) {
+            serviceRecord = serviceRecordRepository.findById(request.getServiceRecordId())
+                    .orElseThrow(() -> new RuntimeException("Service record not found with id: " + request.getServiceRecordId()));
+        }
+
+        // Validate vehicle exists if provided
+        Vehicle vehicle = null;
+        if (request.getVehicleId() != null) {
+            vehicle = vehicleRepository.findById(request.getVehicleId())
+                    .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + request.getVehicleId()));
+        }
+
+        // Check if enough stock is available
+        if (sparePart.getQuantity() < request.getQuantityUsed()) {
+            throw new RuntimeException("Insufficient stock. Available: " + sparePart.getQuantity() +
+                    ", Requested: " + request.getQuantityUsed());
+        }
+
+        // Create usage record
+        SparePartUsage usage = new SparePartUsage();
+        usage.setUsageNumber(generateUsageNumber());
+        usage.setUsageDate(LocalDate.now());
+        usage.setServiceRecord(serviceRecord);
+        usage.setVehicle(vehicle);
+        usage.setTechnicianName(request.getTechnicianName());
+        usage.setNotes(request.getNotes());
+
+        // Create usage item
+        SparePartUsageItem item = new SparePartUsageItem();
+        item.setSparePart(sparePart);
+        item.setQuantityUsed(request.getQuantityUsed());
+        item.setUnitCost(BigDecimal.valueOf(request.getUnitPrice()));
+        item.setTotalCost(item.calculateTotalCost());
+
+        usage.addItem(item);
+        usage.setTotalCost(usage.calculateTotalCost());
+
+        // Update spare part stock
+        sparePart.setQuantity(sparePart.getQuantity() - request.getQuantityUsed());
+        sparePartRepository.save(sparePart);
+
+        SparePartUsage savedUsage = sparePartUsageRepository.save(usage);
+        return convertToResponse(savedUsage);
+    }
+
+    // 8. Get usage by spare part
+    @Override
+    public List<SparePartUsageResponse> getUsageBySparePart(Long sparePartId) {
+        SparePart sparePart = sparePartRepository.findById(sparePartId)
+                .orElseThrow(() -> new RuntimeException("Spare part not found with id: " + sparePartId));
+
+        List<SparePartUsage> usages = sparePartUsageRepository.findByItems_SparePart(sparePart);
+
+        return usages.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
+    // 9. Get usage by service record
     @Override
-    @Transactional
-    public SparePartUsageResponse createUsage(SparePartUsageRequest request) {
-        // Generate usage number
-        String usageNumber = "USG-" + System.currentTimeMillis();
+    public List<SparePartUsageResponse> getUsageByServiceJob(Long serviceRecordId) {
+        ServiceRecord serviceRecord = serviceRecordRepository.findById(serviceRecordId)
+                .orElseThrow(() -> new RuntimeException("Service record not found with id: " + serviceRecordId));
 
-        // Create usage record
-        SparePartUsage usage = new SparePartUsage();
-        usage.setUsageNumber(usageNumber);
-        usage.setUsageDate(request.getUsageDate() != null ? request.getUsageDate() : LocalDate.now());
-        usage.setTechnicianName(request.getTechnicianName());
-        usage.setNotes(request.getNotes());
+        List<SparePartUsage> usages = sparePartUsageRepository.findByServiceRecord(serviceRecord);
 
-        // Set service record if provided
-        if (request.getServiceRecordId() != null) {
-            ServiceRecord serviceRecord = serviceRecordRepository.findById(request.getServiceRecordId())
-                    .orElseThrow(() -> new RuntimeException("Service record not found with id: " + request.getServiceRecordId()));
-            usage.setServiceRecord(serviceRecord);
-        }
-
-        // Set vehicle if provided
-        if (request.getVehicleId() != null) {
-            Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + request.getVehicleId()));
-            usage.setVehicle(vehicle);
-        }
-
-        // Process items and update stock
-        BigDecimal totalCost = BigDecimal.ZERO;
-        List<SparePartUsageItem> items = new ArrayList<>();
-
-        for (SparePartUsageRequest.Item itemRequest : request.getItems()) {
-            SparePart sparePart = sparePartRepository.findById(itemRequest.getSparePartId())
-                    .orElseThrow(() -> new RuntimeException("Spare part not found with id: " + itemRequest.getSparePartId()));
-
-            // Check if sufficient stock is available
-            if (sparePart.getQuantity() < itemRequest.getQuantityUsed()) {
-                throw new RuntimeException("Insufficient stock for part: " + sparePart.getPartCode() +
-                        ". Available: " + sparePart.getQuantity() + ", Requested: " + itemRequest.getQuantityUsed());
-            }
-
-            SparePartUsageItem item = new SparePartUsageItem();
-            item.setSparePart(sparePart);
-            item.setQuantityUsed(itemRequest.getQuantityUsed());
-            item.setUnitCost(BigDecimal.valueOf(itemRequest.getUnitCost()));
-            item.setTotalCost(BigDecimal.valueOf(itemRequest.getTotalCost()));
-            item.setUsage(usage);
-
-            items.add(item);
-            totalCost = totalCost.add(item.getTotalCost());
-
-            // Update stock quantity
-            sparePart.setQuantity(sparePart.getQuantity() - itemRequest.getQuantityUsed());
-            sparePart.setUpdatedAt(LocalDateTime.now());
-            sparePartRepository.save(sparePart);
-        }
-
-        usage.setItems(items);
-        usage.setTotalCost(totalCost);
-        usage.setCreatedAt(LocalDateTime.now());
-
-        SparePartUsage savedUsage = usageRepository.save(usage);
-        return convertToResponse(savedUsage);
+        return usages.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
+    // 10. Get usage by date range
     @Override
-    @Transactional
-    public void deleteUsage(Long id) {
-        SparePartUsage usage = usageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usage record not found with id: " + id));
-
-        // Restore stock quantities
-        for (SparePartUsageItem item : usage.getItems()) {
-            SparePart sparePart = item.getSparePart();
-            sparePart.setQuantity(sparePart.getQuantity() + item.getQuantityUsed());
-            sparePart.setUpdatedAt(LocalDateTime.now());
-            sparePartRepository.save(sparePart);
-        }
-
-        usageRepository.delete(usage);
+    public List<SparePartUsageResponse> getUsageByDateRange(LocalDate startDate, LocalDate endDate) {
+        return sparePartUsageRepository.findByUsageDateBetween(startDate, endDate).stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
-    @Override
-    public Map<String, Object> getUsageChartData(Long categoryId) {
-        Map<String, Object> chartData = new HashMap<>();
+    private String generateUsageNumber() {
+        // Generate a usage number like USG-20250102-001
+        LocalDate today = LocalDate.now();
+        String dateStr = today.toString().replace("-", "");
 
-        // Get last 6 months data
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusMonths(6);
+        Long count = sparePartUsageRepository.count();
+        String sequence = String.format("%03d", count + 1);
 
-        // Get monthly usage data
-        List<Object[]> monthlyUsage = usageRepository.findMonthlyUsageByCategory(categoryId, startDate, endDate);
-
-        // Process data for chart
-        List<String> labels = monthlyUsage.stream()
-                .map(row -> formatMonth((String) row[0]))
-                .collect(Collectors.toList());
-
-        List<Double> usageData = monthlyUsage.stream()
-                .map(row -> ((Number) row[1]).doubleValue())
-                .collect(Collectors.toList());
-
-        chartData.put("labels", labels);
-        chartData.put("usageData", usageData);
-        chartData.put("totalUsage", usageData.stream().mapToDouble(Double::doubleValue).sum());
-
-        return chartData;
-    }
-
-    @Override
-    public Map<String, Object> getStockFlowData(Long categoryId) {
-        Map<String, Object> stockFlow = new HashMap<>();
-
-        // Get last 3 months data for detailed view
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusMonths(3);
-
-        // Get usage by brand
-        List<Object[]> usageByBrand = usageRepository.findUsageByBrandAndCategory(categoryId, startDate, endDate);
-
-        Map<String, Double> brandUsageMap = new HashMap<>();
-        for (Object[] row : usageByBrand) {
-            String brand = (String) row[0];
-            Double quantity = ((Number) row[1]).doubleValue();
-            brandUsageMap.put(brand, brandUsageMap.getOrDefault(brand, 0.0) + quantity);
-        }
-
-        // Get current stock by brand
-        List<SparePart> parts = sparePartRepository.findByCategoryId(categoryId);
-        Map<String, Integer> brandStockMap = new HashMap<>();
-        for (SparePart part : parts) {
-            String brand = part.getBrand() != null ? part.getBrand() : "Unknown";
-            brandStockMap.put(brand, brandStockMap.getOrDefault(brand, 0) + part.getQuantity());
-        }
-
-        stockFlow.put("usageByBrand", brandUsageMap);
-        stockFlow.put("stockByBrand", brandStockMap);
-
-        // Get low stock parts
-        List<Map<String, Object>> lowStockPartsList = parts.stream()
-                .filter(p -> p.getQuantity() <= p.getMinQuantity())
-                .map(p -> {
-                    Map<String, Object> partMap = new HashMap<>();
-                    partMap.put("partCode", p.getPartCode());
-                    partMap.put("partName", p.getPartName());
-                    partMap.put("brand", p.getBrand());
-                    partMap.put("currentStock", p.getQuantity());
-                    partMap.put("minQuantity", p.getMinQuantity());
-                    return partMap;
-                })
-                .collect(Collectors.toList());
-
-        stockFlow.put("lowStockParts", lowStockPartsList);
-
-        return stockFlow;
+        return "USG-" + dateStr + "-" + sequence;
     }
 
     private SparePartUsageResponse convertToResponse(SparePartUsage usage) {
@@ -218,45 +282,25 @@ public class SparePartUsageServiceImpl implements SparePartUsageService {
         response.setTotalCost(usage.getTotalCost() != null ? usage.getTotalCost().doubleValue() : 0.0);
         response.setCreatedAt(usage.getCreatedAt());
 
-        // Set service record ID if exists
         if (usage.getServiceRecord() != null) {
             response.setServiceRecordId(usage.getServiceRecord().getId());
         }
 
-        // Set vehicle ID if exists
         if (usage.getVehicle() != null) {
             response.setVehicleId(usage.getVehicle().getId());
-            response.setVehicleNumber(usage.getVehicle().getVehicleNumber());
+            response.setVehicleInfo(usage.getVehicleInfo());
         }
 
-        // Convert items
-        List<SparePartUsageResponse.Item> items = usage.getItems().stream()
-                .map(item -> {
-                    SparePartUsageResponse.Item itemResponse = new SparePartUsageResponse.Item();
-                    itemResponse.setId(item.getId());
-                    itemResponse.setSparePartId(item.getSparePart().getId());
-                    itemResponse.setPartCode(item.getSparePart().getPartCode());
-                    itemResponse.setPartName(item.getSparePart().getPartName());
-                    itemResponse.setQuantityUsed(item.getQuantityUsed());
-                    itemResponse.setUnitCost(item.getUnitCost() != null ? item.getUnitCost().doubleValue() : 0.0);
-                    itemResponse.setTotalCost(item.getTotalCost() != null ? item.getTotalCost().doubleValue() : 0.0);
-                    return itemResponse;
-                })
-                .collect(Collectors.toList());
+        // Add items information
+        if (!usage.getItems().isEmpty()) {
+            SparePartUsageItem firstItem = usage.getItems().get(0);
+            response.setSparePartId(firstItem.getSparePart().getId());
+            response.setSparePartCode(firstItem.getSparePart().getPartCode());
+            response.setSparePartName(firstItem.getSparePart().getPartName());
+            response.setQuantityUsed(firstItem.getQuantityUsed());
+            response.setUnitPrice(firstItem.getUnitCost() != null ? firstItem.getUnitCost().doubleValue() : 0.0);
+        }
 
-        response.setItems(items);
         return response;
-    }
-
-    private String formatMonth(String monthKey) {
-        // monthKey format: "2024-01"
-        String[] parts = monthKey.split("-");
-        int year = Integer.parseInt(parts[0]);
-        int month = Integer.parseInt(parts[1]);
-
-        String[] monthNames = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-        return monthNames[month - 1] + " " + year;
     }
 }

@@ -1,3 +1,4 @@
+// src/main/java/com/vsc/vehicle_service_backend/service/impl/SparePartServiceImpl.java
 package com.vsc.vehicle_service_backend.service.impl;
 
 import com.vsc.vehicle_service_backend.dto.SparePartRequest;
@@ -9,223 +10,140 @@ import com.vsc.vehicle_service_backend.repository.SparePartCategoryRepository;
 import com.vsc.vehicle_service_backend.repository.SparePartRepository;
 import com.vsc.vehicle_service_backend.repository.SupplierRepository;
 import com.vsc.vehicle_service_backend.service.SparePartService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SparePartServiceImpl implements SparePartService {
 
-    @Autowired
-    private SparePartRepository sparePartRepository;
+    private final SparePartRepository sparePartRepository;
+    private final SparePartCategoryRepository categoryRepository;
+    private final SupplierRepository supplierRepository;
 
-    @Autowired
-    private SparePartCategoryRepository categoryRepository;
+    // Generate part code
+    private String generatePartCode() {
+        // Find the latest part to increment the number
+        SparePart latestPart = sparePartRepository.findTopByOrderByIdDesc().orElse(null);
+        int nextNumber = 1;
 
-    @Autowired
-    private SupplierRepository supplierRepository;
+        if (latestPart != null && latestPart.getPartCode() != null
+                && latestPart.getPartCode().startsWith("PART-")) {
+            try {
+                String numStr = latestPart.getPartCode().substring(5);
+                nextNumber = Integer.parseInt(numStr) + 1;
+            } catch (NumberFormatException e) {
+                // If parsing fails, start from 1
+            }
+        }
+
+        return String.format("PART-%03d", nextNumber);
+    }
 
     @Override
     public List<SparePartResponse> getAllSpareParts() {
         return sparePartRepository.findAll().stream()
-                .map(this::convertToResponse)
+                .map(SparePartResponse::new)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public SparePartResponse getPartById(Long id) {
-        SparePart part = sparePartRepository.findById(id)
+    public SparePartResponse getSparePartById(Long id) {
+        SparePart sparePart = sparePartRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Spare part not found with id: " + id));
-        return convertToResponse(part);
-    }
-
-    @Override
-    public SparePartResponse getPartByCode(String partCode) {
-        SparePart part = sparePartRepository.findByPartCode(partCode)
-                .orElseThrow(() -> new RuntimeException("Spare part not found with code: " + partCode));
-        return convertToResponse(part);
-    }
-
-    @Override
-    public List<SparePartResponse> getPartsByCategory(Long categoryId) {
-        return sparePartRepository.findByCategoryId(categoryId).stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<SparePartResponse> getLowStockParts() {
-        return sparePartRepository.findLowStockParts().stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<SparePartResponse> searchParts(String searchTerm) {
-        return sparePartRepository.searchParts(searchTerm).stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+        return new SparePartResponse(sparePart);
     }
 
     @Override
     @Transactional
     public SparePartResponse createSparePart(SparePartRequest request) {
-        // Check if part code already exists
-        if (sparePartRepository.existsByPartCode(request.getPartCode())) {
-            throw new RuntimeException("Part code already exists: " + request.getPartCode());
-        }
-
+        // Validate category
         SparePartCategory category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
 
+        // Validate supplier
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + request.getSupplierId()));
 
-        SparePart part = new SparePart();
-        part.setPartCode(request.getPartCode());
-        part.setPartName(request.getPartName());
-        part.setBrand(request.getBrand());
-        part.setModel(request.getModel());
+        // Create new spare part
+        SparePart sparePart = new SparePart();
+        sparePart.setPartCode(generatePartCode());
+        sparePart.setPartName(request.getPartName());
+        sparePart.setBrand(request.getBrand());
+        sparePart.setModel(request.getModel());
+        sparePart.setPrice(request.getPrice());
+        sparePart.setQuantity(request.getQuantity());
+        sparePart.setMinQuantity(request.getMinQuantity());
+        sparePart.setImagePath(request.getImagePath());
+        sparePart.setCategory(category);
+        sparePart.setSupplier(supplier);
 
-        // FIXED: Directly set Double price, no BigDecimal conversion needed
-        part.setPrice(request.getPrice() != null ? request.getPrice() : 0.0);
-
-        part.setQuantity(request.getQuantity() != null ? request.getQuantity() : 0);
-        part.setMinQuantity(request.getMinQuantity() != null ? request.getMinQuantity() : 10);
-        part.setImagePath(request.getImagePath());
-        part.setCategory(category);
-        part.setSupplier(supplier);
-
-        SparePart savedPart = sparePartRepository.save(part);
-        return convertToResponse(savedPart);
+        SparePart savedPart = sparePartRepository.save(sparePart);
+        return new SparePartResponse(savedPart);
     }
 
     @Override
     @Transactional
     public SparePartResponse updateSparePart(Long id, SparePartRequest request) {
-        SparePart part = sparePartRepository.findById(id)
+        // Find existing spare part
+        SparePart sparePart = sparePartRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Spare part not found with id: " + id));
 
-        // Check if new part code conflicts with existing (excluding current)
-        if (!part.getPartCode().equals(request.getPartCode()) &&
-                sparePartRepository.existsByPartCode(request.getPartCode())) {
-            throw new RuntimeException("Part code already exists: " + request.getPartCode());
-        }
-
+        // Validate category
         SparePartCategory category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
 
+        // Validate supplier
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + request.getSupplierId()));
 
-        part.setPartCode(request.getPartCode());
-        part.setPartName(request.getPartName());
-        part.setBrand(request.getBrand());
-        part.setModel(request.getModel());
+        // Update fields
+        sparePart.setPartName(request.getPartName());
+        sparePart.setBrand(request.getBrand());
+        sparePart.setModel(request.getModel());
+        sparePart.setPrice(request.getPrice());
+        sparePart.setQuantity(request.getQuantity());
+        sparePart.setMinQuantity(request.getMinQuantity());
+        sparePart.setImagePath(request.getImagePath());
+        sparePart.setCategory(category);
+        sparePart.setSupplier(supplier);
 
-        // FIXED: Directly set Double price if provided
-        if (request.getPrice() != null) {
-            part.setPrice(request.getPrice());
-        }
-        // If price is null, keep existing price
-
-        part.setQuantity(request.getQuantity() != null ? request.getQuantity() : part.getQuantity());
-        part.setMinQuantity(request.getMinQuantity() != null ? request.getMinQuantity() : part.getMinQuantity());
-        part.setImagePath(request.getImagePath());
-        part.setCategory(category);
-        part.setSupplier(supplier);
-        part.setUpdatedAt(java.time.LocalDateTime.now());
-
-        SparePart updatedPart = sparePartRepository.save(part);
-        return convertToResponse(updatedPart);
+        SparePart updatedPart = sparePartRepository.save(sparePart);
+        return new SparePartResponse(updatedPart);
     }
 
     @Override
     @Transactional
     public void deleteSparePart(Long id) {
-        SparePart part = sparePartRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Spare part not found with id: " + id));
-        sparePartRepository.delete(part);
+        if (!sparePartRepository.existsById(id)) {
+            throw new RuntimeException("Spare part not found with id: " + id);
+        }
+        sparePartRepository.deleteById(id);
     }
 
     @Override
-    public boolean existsByPartCode(String partCode) {
-        return sparePartRepository.existsByPartCode(partCode);
+    public List<SparePartResponse> getSparePartsByCategory(Long categoryId) {
+        // Find category first
+        SparePartCategory category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+
+        return sparePartRepository.findByCategory(category).stream()
+                .map(SparePartResponse::new)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Map<String, Object> getStockReport() {
-        Map<String, Object> report = new HashMap<>();
+    public List<SparePartResponse> getSparePartsBySupplier(Long supplierId) {
+        // Find supplier first
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + supplierId));
 
-        List<SparePart> allParts = sparePartRepository.findAll();
-        long totalParts = allParts.size();
-
-        long lowStockCount = allParts.stream()
-                .filter(p -> p.getQuantity() <= p.getMinQuantity())
-                .count();
-
-        long mediumStockCount = allParts.stream()
-                .filter(p -> p.getQuantity() > p.getMinQuantity() && p.getQuantity() <= p.getMinQuantity() * 2)
-                .count();
-
-        long highStockCount = totalParts - lowStockCount - mediumStockCount;
-
-        // Calculate total value
-        double totalValue = allParts.stream()
-                .mapToDouble(p -> p.getPrice() * p.getQuantity())  // FIXED: Use p.getPrice() directly
-                .sum();
-
-        report.put("totalParts", totalParts);
-        report.put("lowStockCount", lowStockCount);
-        report.put("mediumStockCount", mediumStockCount);
-        report.put("highStockCount", highStockCount);
-        report.put("totalValue", totalValue);
-        report.put("lowStockPercentage", totalParts > 0 ? (lowStockCount * 100.0 / totalParts) : 0);
-
-        return report;
-    }
-
-    private SparePartResponse convertToResponse(SparePart part) {
-        SparePartResponse response = new SparePartResponse();
-        response.setId(part.getId());
-        response.setPartCode(part.getPartCode());
-        response.setPartName(part.getPartName());
-        response.setBrand(part.getBrand());
-        response.setModel(part.getModel());
-        response.setPrice(part.getPrice() != null ? part.getPrice() : 0.0);  // FIXED: Use getPrice() directly
-        response.setQuantity(part.getQuantity());
-        response.setMinQuantity(part.getMinQuantity());
-        response.setImagePath(part.getImagePath());
-
-        // Calculate stock status
-        String stockStatus = calculateStockStatus(part.getQuantity(), part.getMinQuantity());
-        response.setStockStatus(stockStatus);
-
-        if (part.getCategory() != null) {
-            response.setCategoryId(part.getCategory().getId());
-            response.setCategoryName(part.getCategory().getCategoryName());
-        }
-
-        if (part.getSupplier() != null) {
-            response.setSupplierId(part.getSupplier().getId());
-            response.setSupplierName(part.getSupplier().getSupplierName());
-        }
-
-        response.setCreatedAt(part.getCreatedAt());
-        response.setUpdatedAt(part.getUpdatedAt());
-        return response;
-    }
-
-    private String calculateStockStatus(Integer quantity, Integer minQuantity) {
-        if (quantity <= minQuantity) {
-            return "LOW";
-        } else if (quantity <= (minQuantity * 2)) {
-            return "MEDIUM";
-        } else {
-            return "HIGH";
-        }
+        return sparePartRepository.findBySupplier(supplier).stream()
+                .map(SparePartResponse::new)
+                .collect(Collectors.toList());
     }
 }
