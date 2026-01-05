@@ -63,4 +63,15 @@ public class SparePartController {
         // Implement search logic here or in service
         return ResponseEntity.ok(sparePartService.getAllSpareParts()); // Temporary
     }
+
+
+    @GetMapping("/chart-data/{categoryId}")
+    public ResponseEntity<?> getUsageChartData(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(usageService.getUsageChartData(categoryId));
+    }
+
+    @GetMapping("/stock-flow/{categoryId}")
+    public ResponseEntity<?> getStockFlowData(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(usageService.getStockFlowData(categoryId));
+    }
 }
