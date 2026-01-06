@@ -1,9 +1,10 @@
-// src/main/java/com/vsc/vehicle_service_backend/controller/SparePartController.java
 package com.vsc.vehicle_service_backend.controller;
 
 import com.vsc.vehicle_service_backend.dto.SparePartRequest;
 import com.vsc.vehicle_service_backend.dto.SparePartResponse;
 import com.vsc.vehicle_service_backend.service.SparePartService;
+// REMOVE THESE METHODS OR FIX THEM
+// import com.vsc.vehicle_service_backend.service.SparePartUsageService; // If you have this service
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import java.util.List;
 public class SparePartController {
 
     private final SparePartService sparePartService;
+    // private final SparePartUsageService usageService; // Uncomment if you create this service
 
     @GetMapping
     public ResponseEntity<List<SparePartResponse>> getAllSpareParts() {
@@ -60,11 +62,12 @@ public class SparePartController {
 
     @GetMapping("/search")
     public ResponseEntity<List<SparePartResponse>> searchSpareParts(@RequestParam String q) {
-        // Implement search logic here or in service
-        return ResponseEntity.ok(sparePartService.getAllSpareParts()); // Temporary
+        // TODO: Implement search logic in service
+        return ResponseEntity.ok(sparePartService.getAllSpareParts());
     }
 
-
+    // TEMPORARILY COMMENT OUT OR REMOVE THESE METHODS
+    /*
     @GetMapping("/chart-data/{categoryId}")
     public ResponseEntity<?> getUsageChartData(@PathVariable Long categoryId) {
         return ResponseEntity.ok(usageService.getUsageChartData(categoryId));
@@ -74,4 +77,5 @@ public class SparePartController {
     public ResponseEntity<?> getStockFlowData(@PathVariable Long categoryId) {
         return ResponseEntity.ok(usageService.getStockFlowData(categoryId));
     }
+    */
 }

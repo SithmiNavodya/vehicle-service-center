@@ -3,6 +3,8 @@ package com.vsc.vehicle_service_backend.service.impl;
 import com.vsc.vehicle_service_backend.dto.SparePartIncomeRequest;
 import com.vsc.vehicle_service_backend.dto.SparePartIncomeResponse;
 import com.vsc.vehicle_service_backend.entity.*;
+import com.vsc.vehicle_service_backend.entity.IncomeStatus;
+import com.vsc.vehicle_service_backend.entity.ItemStatus;
 import com.vsc.vehicle_service_backend.repository.SparePartIncomeRepository;
 import com.vsc.vehicle_service_backend.repository.SparePartRepository;
 import com.vsc.vehicle_service_backend.repository.SupplierRepository;
@@ -48,7 +50,7 @@ public class SparePartIncomeServiceImpl implements SparePartIncomeService {
 
     @Override
     public List<SparePartIncomeResponse> getPendingIncomes() {
-        return incomeRepository.findByStatus("PENDING").stream()
+        return incomeRepository.findByStatus(IncomeStatus.PENDING).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -215,7 +217,18 @@ public class SparePartIncomeServiceImpl implements SparePartIncomeService {
 
         // Get count of today's orders
         LocalDate today = LocalDate.now();
-        long countToday = incomeRepository.countByOrderDate(today);
+
+        // FIX: If countByOrderDate doesn't work, use this alternative:
+        long countToday;
+        try {
+            countToday = incomeRepository.countByOrderDate(today);
+        } catch (Exception e) {
+            // Alternative: Count manually
+            countToday = incomeRepository.findByOrderDateBetween(
+                    today.atStartOfDay().toLocalDate(),
+                    today.atTime(23, 59, 59).toLocalDate()
+            ).size();
+        }
 
         // Generate sequence number (001, 002, etc.)
         String sequence = String.format("%03d", countToday + 1);
@@ -235,7 +248,7 @@ public class SparePartIncomeServiceImpl implements SparePartIncomeService {
         response.setReceivedDate(income.getReceivedDate());
         response.setNotes(income.getNotes());
 
-        // Convert items - IMPORTANT: This was missing!
+        // Convert items
         if (income.getItems() != null) {
             List<SparePartIncomeResponse.Item> items = income.getItems().stream()
                     .map(item -> {

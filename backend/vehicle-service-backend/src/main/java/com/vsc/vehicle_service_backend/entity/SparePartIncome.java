@@ -1,5 +1,7 @@
 package com.vsc.vehicle_service_backend.entity;
 
+import com.vsc.vehicle_service_backend.entity.IncomeStatus;
+import com.vsc.vehicle_service_backend.entity.ItemStatus;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,7 +43,6 @@ public class SparePartIncome {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // ADD THIS: Relationship with items
     @OneToMany(mappedBy = "income", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SparePartIncomeItem> items = new ArrayList<>();
 
@@ -87,7 +88,6 @@ public class SparePartIncome {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    // ADD GETTER/SETTER for items
     public List<SparePartIncomeItem> getItems() { return items; }
     public void setItems(List<SparePartIncomeItem> items) { this.items = items; }
 }

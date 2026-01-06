@@ -9,4 +9,5 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     @Query(value = "SELECT vehicle_id FROM vehicles ORDER BY id DESC LIMIT 1", nativeQuery = true)
     String getLastVehicleId();
+
 }
