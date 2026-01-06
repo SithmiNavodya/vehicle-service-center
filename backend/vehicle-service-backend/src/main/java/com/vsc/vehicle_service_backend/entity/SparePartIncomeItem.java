@@ -1,5 +1,6 @@
 package com.vsc.vehicle_service_backend.entity;
 
+import com.vsc.vehicle_service_backend.entity.ItemStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,16 +21,16 @@ public class SparePartIncomeItem {
     @JoinColumn(name = "spare_part_id", nullable = false)
     private SparePart sparePart;
 
-    @Column(name = "quantity_ordered", nullable = false)
+    @Column(name = "quantity_ordered")
     private Integer quantityOrdered;
 
     @Column(name = "quantity_received")
     private Integer quantityReceived = 0;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    @Column(name = "unit_price")
     private BigDecimal unitPrice;
 
-    @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
+    @Column(name = "total_price")
     private BigDecimal totalPrice;
 
     @Enumerated(EnumType.STRING)
@@ -40,6 +41,11 @@ public class SparePartIncomeItem {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public SparePartIncomeItem() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 
     // Getters and Setters
     public Long getId() { return id; }
