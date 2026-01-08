@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/spare-part-usages")
+@RequestMapping("/spare-part-usages")
 @CrossOrigin(origins = "http://localhost:3000")
 public class SparePartUsageController {
 
