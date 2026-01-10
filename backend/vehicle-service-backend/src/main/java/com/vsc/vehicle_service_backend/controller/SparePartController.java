@@ -3,8 +3,6 @@ package com.vsc.vehicle_service_backend.controller;
 import com.vsc.vehicle_service_backend.dto.SparePartRequest;
 import com.vsc.vehicle_service_backend.dto.SparePartResponse;
 import com.vsc.vehicle_service_backend.service.SparePartService;
-// REMOVE THESE METHODS OR FIX THEM
-// import com.vsc.vehicle_service_backend.service.SparePartUsageService; // If you have this service
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +18,6 @@ import java.util.List;
 public class SparePartController {
 
     private final SparePartService sparePartService;
-    // private final SparePartUsageService usageService; // Uncomment if you create this service
 
     @GetMapping
     public ResponseEntity<List<SparePartResponse>> getAllSpareParts() {
@@ -66,16 +63,6 @@ public class SparePartController {
         return ResponseEntity.ok(sparePartService.getAllSpareParts());
     }
 
-    // TEMPORARILY COMMENT OUT OR REMOVE THESE METHODS
-    /*
-    @GetMapping("/chart-data/{categoryId}")
-    public ResponseEntity<?> getUsageChartData(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(usageService.getUsageChartData(categoryId));
-    }
-
-    @GetMapping("/stock-flow/{categoryId}")
-    public ResponseEntity<?> getStockFlowData(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(usageService.getStockFlowData(categoryId));
-    }
-    */
+    // REMOVED THE BROKEN METHODS - these were causing the errors
+    // If you need chart data, create a separate ChartController or add to SparePartUsageController
 }
