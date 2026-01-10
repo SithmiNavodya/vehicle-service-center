@@ -1,61 +1,94 @@
-package com.vsc.vehicle_service_backend.controller;
+// src/services/sparePartIncomeService.js
+import { api } from './api';
 
-import com.vsc.vehicle_service_backend.dto.SparePartIncomeRequest;
-import com.vsc.vehicle_service_backend.dto.SparePartIncomeResponse;
-import com.vsc.vehicle_service_backend.service.SparePartIncomeService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/spare-part-incomes")
-@CrossOrigin(origins = "http://localhost:3000")
-public class SparePartIncomeController {
-
-    @Autowired
-    private SparePartIncomeService incomeService;
-
-    @GetMapping
-    public ResponseEntity<List<SparePartIncomeResponse>> getAllIncomes() {
-        return ResponseEntity.ok(incomeService.getAllIncomes());
+        const sparePartIncomeService = {
+// Get all income records
+getAllIncomes: async () => {
+        try {
+        const response = await api.get('/spare-part-incomes');
+      return response.data;
+    } catch (error) {
+        console.error('Error fetching all incomes:', error);
+      throw error;
     }
+            },
 
-    @GetMapping("/pending")
-    public ResponseEntity<List<SparePartIncomeResponse>> getPendingIncomes() {
-        return ResponseEntity.ok(incomeService.getPendingIncomes());
+// Get income by ID
+getIncomeById: async (id) => {
+        try {
+        const response = await api.get(`/spare-part-incomes/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching income:', error);
+      throw error;
     }
+            },
 
-    @GetMapping("/{id}")
-    public ResponseEntity<SparePartIncomeResponse> getIncomeById(@PathVariable Long id) {
-        return ResponseEntity.ok(incomeService.getIncomeById(id));
+// Get pending incomes
+getPendingIncomes: async () => {
+        try {
+        const response = await api.get('/spare-part-incomes/pending');
+      return response.data;
+    } catch (error) {
+        console.error('Error fetching pending incomes:', error);
+      throw error;
     }
+            },
 
-    @PostMapping
-    public ResponseEntity<SparePartIncomeResponse> createIncome(@Valid @RequestBody SparePartIncomeRequest request) {
-        return ResponseEntity.ok(incomeService.createIncome(request));
+// Create new income
+createIncome: async (incomeData) => {
+        try {
+        const response = await api.post('/spare-part-incomes', incomeData);
+      return response.data;
+    } catch (error) {
+        console.error('Error creating income:', error);
+      throw error;
     }
+            },
 
-    @PutMapping("/{id}/receive")
-    public ResponseEntity<SparePartIncomeResponse> receiveIncome(@PathVariable Long id) {
-        return ResponseEntity.ok(incomeService.receiveIncome(id));
+// Receive income
+receiveIncome: async (id) => {
+        try {
+        const response = await api.put(`/spare-part-incomes/${id}/receive`);
+        return response.data;
+    } catch (error) {
+        console.error('Error receiving income:', error);
+      throw error;
     }
+            },
 
-    @PutMapping("/{id}/cancel")
-    public ResponseEntity<SparePartIncomeResponse> cancelIncome(@PathVariable Long id) {
-        return ResponseEntity.ok(incomeService.cancelIncome(id));
+// Cancel income
+cancelIncome: async (id) => {
+        try {
+        const response = await api.put(`/spare-part-incomes/${id}/cancel`);
+        return response.data;
+    } catch (error) {
+        console.error('Error canceling income:', error);
+      throw error;
     }
+            },
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteIncome(@PathVariable Long id) {
-        incomeService.deleteIncome(id);
-        return ResponseEntity.noContent().build();
+// Delete income
+deleteIncome: async (id) => {
+        try {
+        const response = await api.delete(`/spare-part-incomes/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting income:', error);
+      throw error;
     }
+            },
 
-    @GetMapping("/chart-data/{categoryId}")
-    public ResponseEntity<?> getChartDataByCategory(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(incomeService.getChartDataByCategory(categoryId));
+// Get chart data by category
+getChartData: async (categoryId) => {
+        try {
+        const response = await api.get(`/spare-part-incomes/chart-data/${categoryId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching chart data:', error);
+      throw error;
     }
-}
+            }
+            };
+
+export default sparePartIncomeService;
