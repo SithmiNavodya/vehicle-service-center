@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, apiNoPrefix } from '../services/api';  // Import both instances
+import { api, apiNoPrefix } from '../services/api';  // Make sure this path is correct
 
 const AuthContext = createContext();
 
@@ -12,7 +12,6 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in on app load
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
 
@@ -21,9 +20,14 @@ export const AuthProvider = ({ children }) => {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
 
-        // Set default authorization header for BOTH instances
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        apiNoPrefix.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // Only set header if token exists
+        if (token) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          // Only set for apiNoPrefix if it exists
+          if (apiNoPrefix && apiNoPrefix.defaults) {
+            apiNoPrefix.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          }
+        }
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
@@ -33,13 +37,20 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Login function
   const login = async (email, password) => {
     try {
       console.log('Attempting login with:', { email });
 
-      // Backend endpoint is /api/auth/login (not /api/v1/auth/login)
-      const response = await apiNoPrefix.post('/api/auth/login', { email, password });
+      // Check which endpoint works - try different paths
+      let response;
+      try {
+        // Try with apiNoPrefix first
+        response = await apiNoPrefix.post('/api/auth/login', { email, password });
+      } catch (err) {
+        // Fallback to regular api instance
+        response = await api.post('/auth/login', { email, password });
+      }
+
       console.log('Login response:', response.data);
 
       if (response.data.token) {
@@ -55,9 +66,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
 
-        // Set authorization header for BOTH instances
+        // Set headers
         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-        apiNoPrefix.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        if (apiNoPrefix && apiNoPrefix.defaults) {
+          apiNoPrefix.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        }
 
         navigate('/dashboard');
         return { success: true };
@@ -68,32 +81,30 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
-      console.error('Login error details:', error);
+      console.error('Login error:', error);
 
       let errorMessage = 'Login failed. Please try again.';
       if (error.response) {
-        // Server responded with error status
         errorMessage = error.response.data?.message ||
                       `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        // Request made but no response
-        errorMessage = 'No response from server. Check if backend is running.';
       }
 
-      return {
-        success: false,
-        error: errorMessage
-      };
+      return { success: false, error: errorMessage };
     }
   };
 
-  // Register function
   const register = async (userData) => {
     try {
       console.log('Attempting registration:', userData);
 
-      // Use apiNoPrefix for auth endpoints
-      const response = await apiNoPrefix.post('/auth/register', userData);
+      let response;
+      try {
+        // Try different endpoint paths
+        response = await apiNoPrefix.post('/api/auth/register', userData);
+      } catch (err) {
+        response = await api.post('/auth/register', userData);
+      }
+
       console.log('Register response:', response.data);
 
       if (response.data.token) {
@@ -109,9 +120,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(newUser));
         setUser(newUser);
 
-        // Set authorization header for BOTH instances
+        // Set headers
         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-        apiNoPrefix.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        if (apiNoPrefix && apiNoPrefix.defaults) {
+          apiNoPrefix.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        }
 
         navigate('/dashboard');
         return { success: true };
@@ -132,12 +145,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout function
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     delete api.defaults.headers.common['Authorization'];
-    delete apiNoPrefix.defaults.headers.common['Authorization'];
+    if (apiNoPrefix && apiNoPrefix.defaults) {
+      delete apiNoPrefix.defaults.headers.common['Authorization'];
+    }
     setUser(null);
     navigate('/login');
   };
