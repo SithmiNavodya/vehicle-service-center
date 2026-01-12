@@ -1,9 +1,12 @@
 // api.js - CORRECTED VERSION
 import axios from 'axios';
 
+// Base URL configuration
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
 // Base API instance (for /api/v1/* endpoints)
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api/v1',
+export const api = axios.create({
+  baseURL: `${BASE_URL}/api/v1`,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -11,16 +14,17 @@ const api = axios.create({
 });
 
 // For endpoints without /api/v1 prefix (like auth)
-const apiNoPrefix = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080',
+export const apiNoPrefix = axios.create({
+  baseURL: BASE_URL,  // Just the base URL, no /api/v1
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Apply interceptors to both
+// Apply interceptors to both instances
 const setupInterceptors = (instance) => {
+  // Request interceptor
   instance.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem('token');
@@ -35,20 +39,24 @@ const setupInterceptors = (instance) => {
     }
   );
 
+  // Response interceptor
   instance.interceptors.response.use(
     (response) => response,
     (error) => {
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+
+        // Only redirect if not already on login page
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       return Promise.reject(error);
     }
   );
 };
 
+// Setup interceptors for both instances
 setupInterceptors(api);
 setupInterceptors(apiNoPrefix);
-
-export { api, apiNoPrefix };

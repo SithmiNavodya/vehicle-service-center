@@ -1,13 +1,13 @@
 import { api } from './api';
 const sparePartIncomeService = {
   // Get all income records - FIXED: removed duplicate /api/v1
-  getAllIncomes: () => api.get('/api/v1/spare-part-incomes'),
+  getAllIncomes: () => api.get('/spare-part-incomes'),
 
   // Get income by ID
   getIncomeById: (id) => api.get(`/spare-part-incomes/${id}`),
 
   // Get pending incomes
-  getPendingIncomes: () => api.get('/api/v1/spare-part-incomes/pending'),
+  getPendingIncomes: () => api.get('/spare-part-incomes/pending'),
 
   // Create new income
   createIncome: (incomeData) => api.post('/spare-part-incomes', incomeData),
