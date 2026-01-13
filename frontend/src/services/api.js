@@ -1,4 +1,4 @@
-// api.js - CORRECTED VERSION
+
 import axios from 'axios';
 
 // Base URL configuration
