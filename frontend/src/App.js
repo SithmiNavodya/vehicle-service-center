@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ProfileProvider } from './contexts/ProfileContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout/Layout';
 
@@ -13,6 +14,7 @@ import VehicleServiceRecordsPage from './pages/VehicleServiceRecordsPage';
 import MessagesPage from './pages/MessagesPage';
 import SparePartCategoriesPage from './pages/SparePartCategoriesPage';
 import InventoryPage from './pages/InventoryPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Inventory Pages
 import SuppliersPage from './pages/Inventory/SuppliersPage';
@@ -32,6 +34,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <ProfileProvider>{}
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -56,6 +59,8 @@ function App() {
               <Route path="/usage" element={<UsagePage />} />
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/reports/stock" element={<StockReportPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+
 
               {/* Placeholder Pages */}
               <Route path="/appointments" element={
@@ -82,6 +87,7 @@ function App() {
             </div>
           } />
         </Routes>
+        </ProfileProvider>
       </AuthProvider>
     </Router>
   );
