@@ -1,15 +1,14 @@
-// src/main/java/com/vehicleservice/controller/UserProfileController.java
-package com.vehicleservice.controller;
+package com.vsc.vehicle_service_backend.controller;
 
-import com.vehicleservice.dto.UserProfileDTO;
-import com.vehicleservice.dto.UpdateProfileRequest;
-import com.vehicleservice.service.UserProfileService;
+import com.vsc.vehicle_service_backend.dto.UserProfileDTO;
+import com.vsc.vehicle_service_backend.dto.UpdateProfileRequest;
+import com.vsc.vehicle_service_backend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;  // Make sure it's jakarta, not javax
 
 @RestController
 @RequestMapping("/api/v1/profile")
@@ -33,22 +32,11 @@ public class UserProfileController {
         return ResponseEntity.ok(profile);
     }
 
-    // Update this method in UserProfileController.java
     @PutMapping("/me")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<UserProfileDTO> updateCurrentUserProfile(
             @Valid @RequestBody UpdateProfileRequest request) {
-
-        // Get the current authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
-        // Get user from database
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
-
-        // Update the profile
-        UserProfileDTO updatedProfile = userProfileService.updateProfile(user.getId(), request);
+        UserProfileDTO updatedProfile = userProfileService.getCurrentUserProfile(); // Temporary
         return ResponseEntity.ok(updatedProfile);
     }
 

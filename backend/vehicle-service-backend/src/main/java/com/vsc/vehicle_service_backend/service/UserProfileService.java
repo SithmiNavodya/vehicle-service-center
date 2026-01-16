@@ -1,7 +1,7 @@
-package com.vehicleservice.service;
+package com.vsc.vehicle_service_backend.service;
 
-import com.vehicleservice.dto.UserProfileDTO;
-import com.vehicleservice.dto.UpdateProfileRequest;
+import com.vsc.vehicle_service_backend.dto.UserProfileDTO;
+import com.vsc.vehicle_service_backend.dto.UpdateProfileRequest;
 
 public interface UserProfileService {
     UserProfileDTO getProfileByUserId(Long userId);

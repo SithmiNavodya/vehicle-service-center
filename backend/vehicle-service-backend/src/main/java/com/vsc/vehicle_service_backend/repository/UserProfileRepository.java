@@ -1,4 +1,4 @@
-// UserProfileRepository.java
+
 package com.vsc.vehicle_service_backend.repository;
 
 import com.vsc.vehicle_service_backend.entity.UserProfile;
