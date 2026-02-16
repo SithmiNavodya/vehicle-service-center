@@ -480,7 +480,7 @@ const IncomePage = () => {
               <Typography variant="subtitle2" color="primary">Invoiced Items</Typography>
               {selectedIncome.items?.map((it, i) => (
                 <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: 'rgba(0,0,0,0.02)', p: 1, borderRadius: 1 }}>
-                  <Typography variant="body2">{it.sparePartName} x {it.quantityOrdered}</Typography>
+                  <Typography variant="body2">{it.partName} x {it.quantityOrdered}</Typography>
                   <Typography variant="body2" fontWeight="bold">{formatCurrency(it.totalPrice)}</Typography>
                 </Box>
               ))}
