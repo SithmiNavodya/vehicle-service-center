@@ -1,4 +1,4 @@
-# 🚗 AutoOps -- Vehicle Service Center Management System
+# 🚗 VSC Manager -- Vehicle Service Center Management System
 
 A full-stack web application developed to manage vehicle service center operations efficiently.  
 This system handles customer management, vehicle records, service bookings, authentication, reporting, and administrative control.
@@ -263,7 +263,7 @@ vehicle-service-center/
 # 👩‍💻 Author
 
 Navodya Thilakarathna    
-*AutoOps* - Personal Project – Vehicle Service Center Management System
+*VSC Manager* - Personal Project – Vehicle Service Center Management System
 
 ---
 
