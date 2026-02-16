@@ -257,6 +257,16 @@ vehicle-service-center/
     ├── hooks/
     └── utils/
 ```
+## 📸 Screenshots
+
+### sparepart Page
+![sparePart Page](screenshots/VSC_sprParts.png)
+
+### Service Record Page
+![ServiceRecord Page](screenshots/VSC_servicerecord.png)
+
+### Inventory Page
+![Inventory Page](screenshots/VSC_inv.png)
 
 
 
