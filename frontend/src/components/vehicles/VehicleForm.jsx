@@ -1,16 +1,30 @@
+// src/components/vehicles/VehicleForm.jsx
 import React, { useState, useEffect } from 'react';
 import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   TextField,
   Button,
   Grid,
   Box,
   Typography,
-  Paper,
+  IconButton,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select
+  InputAdornment,
+  Divider,
+  Stack
 } from '@mui/material';
+import {
+  Close as CloseIcon,
+  DirectionsCar as CarIcon,
+  BrandingWatermark as BrandIcon,
+  ModelTraining as ModelIcon,
+  Category as TypeIcon,
+  Person as OwnerIcon,
+  Save as SaveIcon
+} from '@mui/icons-material';
 
 const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
   const [formData, setFormData] = useState({
@@ -40,23 +54,19 @@ const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
     const newErrors = {};
 
     if (!formData.vehicleNumber.trim()) {
-      newErrors.vehicleNumber = 'Vehicle number is required';
+      newErrors.vehicleNumber = 'Registration number is required';
     }
-
     if (!formData.brand.trim()) {
       newErrors.brand = 'Brand is required';
     }
-
     if (!formData.model.trim()) {
       newErrors.model = 'Model is required';
     }
-
-    if (!formData.vehicleType.trim()) {
-      newErrors.vehicleType = 'Vehicle type is required';
+    if (!formData.vehicleType) {
+      newErrors.vehicleType = 'Please select a type';
     }
-
     if (!formData.customerId) {
-      newErrors.customerId = 'Customer is required';
+      newErrors.customerId = 'Owner association is required';
     }
 
     setErrors(newErrors);
@@ -65,11 +75,7 @@ const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -83,124 +89,189 @@ const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        {isEditing ? 'Edit Vehicle' : 'Add New Vehicle'}
-      </Typography>
+    <Dialog
+      open={true}
+      onClose={onCancel}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: { borderRadius: 3, p: 1 }
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+        <Box>
+          <Typography variant="h5" fontWeight="bold">
+            {isEditing ? 'Update Vehicle Details' : 'Register New Vehicle'}
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            {isEditing ? 'Modify registration or model specifications' : 'Enter details to register a vehicle to a customer'}
+          </Typography>
+        </Box>
+        <IconButton onClick={onCancel} size="small" sx={{ borderRadius: 2 }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
-      <Box component="form" onSubmit={handleSubmit} noValidate>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Vehicle Number *"
-              name="vehicleNumber"
-              value={formData.vehicleNumber}
-              onChange={handleChange}
-              error={!!errors.vehicleNumber}
-              helperText={errors.vehicleNumber}
-              placeholder="e.g., MH-12-AB-1234"
-            />
-          </Grid>
+      <Divider sx={{ mb: 1 }} />
 
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth error={!!errors.customerId}>
-              <InputLabel>Customer *</InputLabel>
-              <Select
+      <DialogContent sx={{ py: 3 }}>
+        <Box component="form" onSubmit={handleSubmit} noValidate>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                required
+                fullWidth
+                label="Vehicle Number"
+                name="vehicleNumber"
+                value={formData.vehicleNumber}
+                onChange={handleChange}
+                error={!!errors.vehicleNumber}
+                helperText={errors.vehicleNumber}
+                placeholder="e.g., WP-ABC-1234"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CarIcon color="primary" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                select
+                required
+                fullWidth
+                label="Assign Owner"
                 name="customerId"
                 value={formData.customerId}
                 onChange={handleChange}
-                label="Customer *"
+                error={!!errors.customerId}
+                helperText={errors.customerId}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <OwnerIcon color="primary" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 2 }
+                }}
               >
                 <MenuItem value="">
-                  <em>Select Customer</em>
+                  <em>Select Registered Customer</em>
                 </MenuItem>
                 {customers.map(customer => (
                   <MenuItem key={customer.id} value={customer.id}>
-                    {customer.name} - {customer.phone}
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="body2" fontWeight="600">{customer.name}</Typography>
+                      <Typography variant="caption" color="textSecondary">({customer.phone})</Typography>
+                    </Stack>
                   </MenuItem>
                 ))}
-              </Select>
-              {errors.customerId && (
-                <Typography variant="caption" color="error">
-                  {errors.customerId}
-                </Typography>
-              )}
-            </FormControl>
-          </Grid>
+              </TextField>
+            </Grid>
 
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Brand *"
-              name="brand"
-              value={formData.brand}
-              onChange={handleChange}
-              error={!!errors.brand}
-              helperText={errors.brand}
-              placeholder="e.g., Toyota, Honda"
-            />
-          </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                required
+                fullWidth
+                label="Brand"
+                name="brand"
+                value={formData.brand}
+                onChange={handleChange}
+                error={!!errors.brand}
+                helperText={errors.brand}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BrandIcon color="primary" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
 
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Model *"
-              name="model"
-              value={formData.model}
-              onChange={handleChange}
-              error={!!errors.model}
-              helperText={errors.model}
-              placeholder="e.g., Camry, Civic"
-            />
-          </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                required
+                fullWidth
+                label="Model"
+                name="model"
+                value={formData.model}
+                onChange={handleChange}
+                error={!!errors.model}
+                helperText={errors.model}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <ModelIcon color="primary" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
 
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth error={!!errors.vehicleType}>
-              <InputLabel>Vehicle Type *</InputLabel>
-              <Select
+            <Grid item xs={12} md={4}>
+              <TextField
+                select
+                required
+                fullWidth
+                label="Vehicle Type"
                 name="vehicleType"
                 value={formData.vehicleType}
                 onChange={handleChange}
-                label="Vehicle Type *"
+                error={!!errors.vehicleType}
+                helperText={errors.vehicleType}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <TypeIcon color="primary" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 2 }
+                }}
               >
-                <MenuItem value="">
-                  <em>Select Type</em>
-                </MenuItem>
                 {vehicleTypes.map(type => (
-                  <MenuItem key={type} value={type}>
-                    {type}
-                  </MenuItem>
+                  <MenuItem key={type} value={type}>{type}</MenuItem>
                 ))}
-              </Select>
-              {errors.vehicleType && (
-                <Typography variant="caption" color="error">
-                  {errors.vehicleType}
-                </Typography>
-              )}
-            </FormControl>
+              </TextField>
+            </Grid>
           </Grid>
+        </Box>
+      </DialogContent>
 
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-              <Button
-                variant="outlined"
-                onClick={onCancel}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-              >
-                {isEditing ? 'Update Vehicle' : 'Add Vehicle'}
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
-    </Paper>
+      <DialogActions sx={{ p: 3, pt: 1 }}>
+        <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
+          <Button
+            fullWidth
+            onClick={onCancel}
+            variant="outlined"
+            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', py: 1.2 }}
+          >
+            Discard
+          </Button>
+          <Button
+            fullWidth
+            onClick={handleSubmit}
+            variant="contained"
+            startIcon={<SaveIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 'bold',
+              py: 1.2,
+              background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
+            }}
+          >
+            {isEditing ? 'Save Changes' : 'Register Vehicle'}
+          </Button>
+        </Stack>
+      </DialogActions>
+    </Dialog>
   );
 };
 

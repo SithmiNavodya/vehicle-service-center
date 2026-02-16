@@ -1,58 +1,103 @@
 package com.vsc.vehicle_service_backend.service.impl;
 
+import com.vsc.vehicle_service_backend.dto.VehicleRequest;
+import com.vsc.vehicle_service_backend.dto.VehicleResponse;
+import com.vsc.vehicle_service_backend.entity.Customer;
 import com.vsc.vehicle_service_backend.entity.Vehicle;
+import com.vsc.vehicle_service_backend.repository.CustomerRepository;
 import com.vsc.vehicle_service_backend.repository.VehicleRepository;
 import com.vsc.vehicle_service_backend.service.VehicleService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository repository;
-
-    public VehicleServiceImpl(VehicleRepository repository) {
-        this.repository = repository;
-    }
+    private final CustomerRepository customerRepository;
 
     private String generateVehicleId() {
         String lastId = repository.getLastVehicleId();
         if (lastId == null) return "vh_1";
 
-        int num = Integer.parseInt(lastId.split("_")[1]);
-        return "vh_" + (num + 1);
+        try {
+            int num = Integer.parseInt(lastId.split("_")[1]);
+            return "vh_" + (num + 1);
+        } catch (Exception e) {
+            return "vh_" + (repository.count() + 1);
+        }
     }
 
     @Override
-    public Vehicle addVehicle(Vehicle vehicle) {
+    public VehicleResponse addVehicle(VehicleRequest request) {
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + request.getCustomerId()));
+
+        Vehicle vehicle = new Vehicle();
         vehicle.setVehicleId(generateVehicleId());
-        return repository.save(vehicle);
+        vehicle.setVehicleNumber(request.getVehicleNumber());
+        vehicle.setBrand(request.getBrand());
+        vehicle.setModel(request.getModel());
+        vehicle.setVehicleType(request.getVehicleType());
+        vehicle.setCustomer(customer);
+
+        Vehicle savedVehicle = repository.save(vehicle);
+        return convertToResponse(savedVehicle);
     }
 
     @Override
-    public List<Vehicle> getAllVehicles() {
-        return repository.findAll();
+    public List<VehicleResponse> getAllVehicles() {
+        return repository.findAll().stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Vehicle getVehicleById(Long id) {
-        return repository.findById(id).orElse(null);
+    public VehicleResponse getVehicleById(Long id) {
+        Vehicle vehicle = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
+        return convertToResponse(vehicle);
     }
 
     @Override
-    public Vehicle updateVehicle(Long id, Vehicle newVehicle) {
-        return repository.findById(id).map(v -> {
-            v.setVehicleNumber(newVehicle.getVehicleNumber());
-            v.setBrand(newVehicle.getBrand());
-            v.setModel(newVehicle.getModel());
-            v.setVehicleType(newVehicle.getVehicleType());
-            return repository.save(v);
-        }).orElse(null);
+    public VehicleResponse updateVehicle(Long id, VehicleRequest request) {
+        Vehicle vehicle = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
+
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + request.getCustomerId()));
+
+        vehicle.setVehicleNumber(request.getVehicleNumber());
+        vehicle.setBrand(request.getBrand());
+        vehicle.setModel(request.getModel());
+        vehicle.setVehicleType(request.getVehicleType());
+        vehicle.setCustomer(customer);
+
+        Vehicle updatedVehicle = repository.save(vehicle);
+        return convertToResponse(updatedVehicle);
     }
 
     @Override
     public void deleteVehicle(Long id) {
         repository.deleteById(id);
+    }
+
+    private VehicleResponse convertToResponse(Vehicle vehicle) {
+        VehicleResponse response = new VehicleResponse();
+        response.setId(vehicle.getId());
+        response.setVehicleId(vehicle.getVehicleId());
+        response.setVehicleNumber(vehicle.getVehicleNumber());
+        response.setBrand(vehicle.getBrand());
+        response.setModel(vehicle.getModel());
+        response.setVehicleType(vehicle.getVehicleType());
+        if (vehicle.getCustomer() != null) {
+            response.setCustomerId(vehicle.getCustomer().getId());
+            response.setCustomerName(vehicle.getCustomer().getName());
+        }
+        return response;
     }
 }

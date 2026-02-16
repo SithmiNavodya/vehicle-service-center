@@ -4,19 +4,21 @@ import {
   CardContent,
   Typography,
   Grid,
-  Box
+  Box,
+  Avatar,
+  Stack
 } from '@mui/material';
 import {
   DirectionsCar as CarIcon,
   Category as CategoryIcon,
   People as PeopleIcon,
-  List as ListIcon
+  Layers as ListIcon,
+  TrendingUp as TrendingIcon
 } from '@mui/icons-material';
 
 const VehicleStats = ({ vehicles }) => {
   const totalVehicles = vehicles.length;
 
-  // Count vehicles by type
   const vehicleTypes = vehicles.reduce((acc, vehicle) => {
     const type = vehicle.vehicleType || 'Unknown';
     acc[type] = (acc[type] || 0) + 1;
@@ -29,28 +31,32 @@ const VehicleStats = ({ vehicles }) => {
 
   const stats = [
     {
-      title: 'Total Vehicles',
+      title: 'TOTAL FLEET',
       value: totalVehicles,
-      icon: <CarIcon fontSize="large" />,
-      color: 'primary.main'
+      icon: <CarIcon />,
+      color: '#1976d2',
+      bg: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)'
     },
     {
-      title: 'Vehicle Types',
-      value: Object.keys(vehicleTypes).length,
-      icon: <CategoryIcon fontSize="large" />,
-      color: 'success.main'
+      title: 'DIVERSITY',
+      value: `${Object.keys(vehicleTypes).length} Types`,
+      icon: <CategoryIcon />,
+      color: '#00897b',
+      bg: 'linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%)'
     },
     {
-      title: 'Most Common',
+      title: 'DOMINANT CLASS',
       value: topType,
-      icon: <ListIcon fontSize="large" />,
-      color: 'warning.main'
+      icon: <ListIcon />,
+      color: '#ed6c02',
+      bg: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)'
     },
     {
-      title: 'Unique Owners',
+      title: 'UNIQUE OWNERS',
       value: new Set(vehicles.map(v => v.customer?.id)).size,
-      icon: <PeopleIcon fontSize="large" />,
-      color: 'info.main'
+      icon: <PeopleIcon />,
+      color: '#8e24aa',
+      bg: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)'
     }
   ];
 
@@ -58,21 +64,38 @@ const VehicleStats = ({ vehicles }) => {
     <Grid container spacing={3}>
       {stats.map((stat, index) => (
         <Grid item xs={12} sm={6} md={3} key={index}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" variant="body2" gutterBottom>
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: 4,
+              background: stat.bg,
+              color: stat.color,
+              position: 'relative',
+              overflow: 'hidden',
+              border: '1px solid rgba(0,0,0,0.03)',
+              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.05)'
+              }
+            }}
+          >
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ position: 'absolute', top: -10, right: -10, opacity: 0.1, transform: 'rotate(15deg)', color: stat.color }}>
+                {React.cloneElement(stat.icon, { sx: { fontSize: 80 } })}
+              </Box>
+
+              <Stack spacing={0.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {React.cloneElement(stat.icon, { sx: { fontSize: 24 } })}
+                  <Typography variant="overline" sx={{ fontWeight: 800, letterSpacing: 1.5 }}>
                     {stat.title}
                   </Typography>
-                  <Typography variant="h5" component="div">
-                    {stat.value}
-                  </Typography>
                 </Box>
-                <Box sx={{ color: stat.color }}>
-                  {stat.icon}
-                </Box>
-              </Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary', mt: -0.5 }}>
+                  {stat.value}
+                </Typography>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>

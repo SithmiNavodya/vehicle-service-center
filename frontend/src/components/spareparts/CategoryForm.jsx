@@ -1,4 +1,4 @@
-// Updated CategoryForm.jsx with direct fetching
+// src/components/spareparts/CategoryForm.jsx
 import React, { useState, useEffect } from 'react';
 import {
   TextField,
@@ -6,250 +6,157 @@ import {
   Grid,
   Box,
   Typography,
-  Paper,
-  Alert,
   CircularProgress,
-  Chip
+  InputAdornment,
+  Divider,
+  Stack
 } from '@mui/material';
 import {
   Save as SaveIcon,
-  Cancel as CancelIcon,
   Category as CategoryIcon,
-  Code as CodeIcon
+  Code as CodeIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
-import  sparePartCategoryService  from '../../services/sparePartCategoryService';
+import sparePartCategoryService from '../../services/sparePartCategoryService';
 
-const CategoryForm = ({
-  category,
-  onSubmit,
-  onCancel,
-  loading = false
-}) => {
+const CategoryForm = ({ category, onSubmit, onCancel, loading = false }) => {
   const [formData, setFormData] = useState({
     categoryCode: '',
     categoryName: ''
   });
   const [errors, setErrors] = useState({});
-  const [existingCategories, setExistingCategories] = useState([]);
-  const [fetchingCategories, setFetchingCategories] = useState(false);
+  const [nextCategoryCode, setNextCategoryCode] = useState('CAT_1');
 
-  // Fetch existing categories on component mount
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchNextCode = async () => {
       try {
-        setFetchingCategories(true);
         const categories = await sparePartCategoryService.getAllCategories();
-        setExistingCategories(categories || []);
-        console.log('✅ Fetched categories:', categories);
-      } catch (error) {
-        console.error('❌ Error fetching categories:', error);
-      } finally {
-        setFetchingCategories(false);
+        const maxCode = categories.reduce((max, cat) => {
+          if (cat.categoryCode?.startsWith('CAT_')) {
+            const num = parseInt(cat.categoryCode.substring(4)) || 0;
+            return Math.max(max, num);
+          }
+          return max;
+        }, 0);
+        setNextCategoryCode(`CAT_${maxCode + 1}`);
+      } catch (err) {
+        console.error('Error fetching next code:', err);
       }
     };
 
-    fetchCategories();
-  }, []);
-
-  // Generate next category code AFTER fetching existing categories
-  useEffect(() => {
-    if (!category && existingCategories.length > 0) {
-      console.log('🔄 Generating code from', existingCategories.length, 'existing categories');
-
-      // Extract all CAT_ numbers
-      const categoryNumbers = existingCategories
-        .map(cat => {
-          if (cat.categoryCode && cat.categoryCode.startsWith('CAT_')) {
-            const numStr = cat.categoryCode.substring(4);
-            const num = parseInt(numStr);
-            return isNaN(num) ? 0 : num;
-          }
-          return 0;
-        })
-        .filter(num => num > 0);
-
-      // Find the maximum number
-      const maxNumber = categoryNumbers.length > 0
-        ? Math.max(...categoryNumbers)
-        : 0;
-
-      const nextCode = `CAT_${maxNumber + 1}`;
-      console.log('✅ Calculated next code:', nextCode, '(max was:', maxNumber, ')');
-
-      setFormData(prev => ({
-        ...prev,
-        categoryCode: nextCode
-      }));
-    } else if (!category) {
-      // No existing categories yet
-      setFormData(prev => ({
-        ...prev,
-        categoryCode: 'CAT_1'
-      }));
+    if (!category) {
+      fetchNextCode();
     }
-  }, [category, existingCategories]);
+  }, [category]);
 
-  // Initialize form for editing
   useEffect(() => {
     if (category) {
       setFormData({
         categoryCode: category.categoryCode || '',
         categoryName: category.categoryName || ''
       });
+    } else {
+      setFormData(prev => ({ ...prev, categoryCode: nextCategoryCode }));
     }
-  }, [category]);
+  }, [category, nextCategoryCode]);
 
-  const validateForm = () => {
+  const validate = () => {
     const newErrors = {};
-
-    if (!formData.categoryName.trim()) {
-      newErrors.categoryName = 'Category name is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!formData.categoryName.trim()) newErrors.categoryName = 'Category Designation is required';
+    return newErrors;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSubmit(formData);
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
     }
+    onSubmit(formData);
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <CategoryIcon />
-        {category ? 'Edit Category' : 'Add New Category'}
-      </Typography>
-
-      {fetchingCategories && !category && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Loading existing categories to generate next code...
-        </Alert>
-      )}
-
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          {/* Category Code Field - Read Only */}
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Category Code"
-              name="categoryCode"
-              value={formData.categoryCode}
-              disabled={true}
-              InputProps={{
-                startAdornment: (
-                  <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                    <CodeIcon fontSize="small" color="action" />
-                  </Box>
-                ),
-              }}
-              sx={{
-                '& .MuiInputBase-input.Mui-disabled': {
-                  WebkitTextFillColor: '#1976d2',
-                  fontWeight: 'bold',
-                  fontSize: '1rem'
-                }
-              }}
-            />
-            {!category && existingCategories.length > 0 && (
-              <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                Auto-generated • Based on {existingCategories.length} existing categories
-              </Typography>
-            )}
-          </Grid>
-
-          {/* Category Name Field */}
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Category Name *"
-              name="categoryName"
-              value={formData.categoryName}
-              onChange={(e) => setFormData(prev => ({ ...prev, categoryName: e.target.value }))}
-              error={!!errors.categoryName}
-              helperText={errors.categoryName || 'Enter descriptive category name'}
-              placeholder="e.g., Engine Parts, Brake System, Electrical Components"
-              disabled={loading || fetchingCategories}
-              required
-              autoFocus
-            />
-          </Grid>
-
-          {/* Show existing categories for reference */}
-          {!category && existingCategories.length > 0 && (
-            <Grid item xs={12}>
-              <Box sx={{
-                p: 2,
-                bgcolor: 'grey.50',
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'grey.200'
-              }}>
-                <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-                  Existing categories ({existingCategories.length}):
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {existingCategories.slice(0, 5).map((cat) => (
-                    <Chip
-                      key={cat.id}
-                      label={`${cat.categoryCode} - ${cat.categoryName}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ fontSize: '0.75rem' }}
-                    />
-                  ))}
-                  {existingCategories.length > 5 && (
-                    <Chip
-                      label={`+${existingCategories.length - 5} more`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ fontSize: '0.75rem' }}
-                    />
-                  )}
-                </Box>
-              </Box>
-            </Grid>
-          )}
-
-          {/* Form Actions */}
-          <Grid item xs={12}>
-            <Box sx={{
-              display: 'flex',
-              gap: 2,
-              justifyContent: 'flex-end',
-              mt: 2,
-              pt: 3,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}>
-              <Button
-                variant="outlined"
-                onClick={onCancel}
-                startIcon={<CancelIcon />}
-                disabled={loading || fetchingCategories}
-                sx={{ minWidth: 100 }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
-                disabled={loading || fetchingCategories || !formData.categoryCode}
-                sx={{ minWidth: 120 }}
-              >
-                {loading ? 'Saving...' : (category ? 'Update' : 'Create')}
-              </Button>
-            </Box>
-          </Grid>
+    <Box component="form" onSubmit={handleSubmit} noValidate sx={{ p: 1 }}>
+      <Grid container spacing={4}>
+        <Grid item xs={12}>
+          <Typography variant="subtitle2" color="primary" fontWeight="bold" gutterBottom>
+            TAXONOMY SPECIFICATIONS
+          </Typography>
         </Grid>
-      </Box>
-    </Paper>
+
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth label="Registry ID" disabled
+            value={formData.categoryCode}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><CodeIcon color="primary" fontSize="small" /></InputAdornment>,
+              sx: { borderRadius: 2, bgcolor: 'rgba(0,0,0,0.03)' }
+            }}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={8}>
+          <TextField
+            required fullWidth label="Category Designation" name="categoryName"
+            value={formData.categoryName}
+            onChange={(e) => {
+              setFormData(prev => ({ ...prev, categoryName: e.target.value }));
+              if (errors.categoryName) setErrors(prev => ({ ...prev, categoryName: '' }));
+            }}
+            error={!!errors.categoryName} helperText={errors.categoryName || 'e.g. Engine Block, Transmission Gearbox'}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><CategoryIcon color="primary" fontSize="small" /></InputAdornment>,
+              sx: { borderRadius: 2 }
+            }}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <Box sx={{
+            p: 2,
+            bgcolor: 'primary.light',
+            borderRadius: 3,
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <Box sx={{ bgcolor: 'rgba(255,255,255,0.2)', p: 1, borderRadius: 2 }}>
+              <CategoryIcon />
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight="bold">Classification Tip</Typography>
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                Use granular categories to make search and maintenance records more precise for technicians.
+              </Typography>
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      <Stack direction="row" spacing={2} justifyContent="flex-end">
+        <Button
+          onClick={onCancel} variant="outlined"
+          sx={{ borderRadius: 2, px: 4, textTransform: 'none', fontWeight: 'bold' }}
+        >
+          Discard
+        </Button>
+        <Button
+          type="submit" variant="contained"
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+          disabled={loading}
+          sx={{
+            borderRadius: 2, px: 4, textTransform: 'none', fontWeight: 'bold',
+            background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
+          }}
+        >
+          {category ? 'Update Taxonomy' : 'Confirm Registration'}
+        </Button>
+      </Stack>
+    </Box>
   );
 };
 

@@ -19,8 +19,15 @@ public class SimpleCorsFilter implements Filter {
         HttpServletResponse response = (HttpServletResponse) res;
         HttpServletRequest request = (HttpServletRequest) req;
 
-        // Allow all origins (or specify your frontend URL)
-        response.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+        // Allow specific origins or handle dynamically
+        String origin = request.getHeader("Origin");
+        if (origin != null && (origin.equals("http://localhost:3000") || origin.equals("http://localhost:3001"))) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+        } else {
+            // Default to 3000 if no origin or unknown origin (for safety, or use 3001)
+            response.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+        }
+        
         response.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, DELETE, PATCH");
         response.setHeader("Access-Control-Max-Age", "3600");
         response.setHeader("Access-Control-Allow-Headers", "*");

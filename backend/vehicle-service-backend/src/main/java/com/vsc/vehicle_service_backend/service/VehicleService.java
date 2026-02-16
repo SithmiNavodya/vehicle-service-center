@@ -1,17 +1,19 @@
 package com.vsc.vehicle_service_backend.service;
 
+import com.vsc.vehicle_service_backend.dto.VehicleRequest;
+import com.vsc.vehicle_service_backend.dto.VehicleResponse;
 import com.vsc.vehicle_service_backend.entity.Vehicle;
 import java.util.List;
 
 public interface VehicleService {
 
-    Vehicle addVehicle(Vehicle vehicle);
+    VehicleResponse addVehicle(VehicleRequest request);
 
-    List<Vehicle> getAllVehicles();
+    List<VehicleResponse> getAllVehicles();
 
-    Vehicle getVehicleById(Long id);
+    VehicleResponse getVehicleById(Long id);
 
-    Vehicle updateVehicle(Long id, Vehicle vehicle);
+    VehicleResponse updateVehicle(Long id, VehicleRequest request);
 
     void deleteVehicle(Long id);
 }

@@ -1,19 +1,19 @@
-import React, { useEffect } from 'react';
+// src/components/servicerecords/ServiceRecordList.jsx
+import React from 'react';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
+  Grid,
+  Card,
+  CardContent,
   Typography,
   Box,
-  Alert,
+  IconButton,
+  Chip,
+  Stack,
+  Avatar,
+  Divider,
   Tooltip,
-  TablePagination
+  CircularProgress,
+  Button
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -22,14 +22,17 @@ import {
   CheckCircle as CompletedIcon,
   Pending as PendingIcon,
   DirectionsCar as CarIcon,
-  Build as ServiceIcon
+  Build as ServiceIcon,
+  History as HistoryIcon,
+  Payments as MoneyIcon,
+  EventNote as DateIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
 const ServiceRecordList = ({
   records,
-  vehicles,  // Add vehicles prop
-  services,  // Add services prop
+  vehicles,
+  services,
   onEdit,
   onDelete,
   onViewVehicle,
@@ -37,262 +40,199 @@ const ServiceRecordList = ({
   error
 }) => {
   const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [rowsPerPage, setRowsPerPage] = React.useState(6);
 
-  // Helper function to get vehicle details by vehicleId
   const getVehicleDetails = (vehicleId) => {
-    if (!vehicleId || !vehicles || vehicles.length === 0) {
-      return { vehicleNumber: 'N/A', brand: 'N/A', model: 'N/A' };
-    }
-
-    const vehicle = vehicles.find(v => v.id === vehicleId || v.vehicleId === vehicleId);
-    if (!vehicle) {
-      return { vehicleNumber: 'N/A', brand: 'N/A', model: 'N/A' };
-    }
-
-    return {
-      vehicleNumber: vehicle.vehicleNumber || vehicle.number || 'N/A',
-      brand: vehicle.brand || 'N/A',
-      model: vehicle.model || 'N/A',
-      vehicleObj: vehicle
-    };
+    if (!vehicleId || !vehicles) return { vehicleNumber: 'N/A', brand: '---', model: '---' };
+    const v = vehicles.find(v => v.id === vehicleId || v.vehicleId === vehicleId);
+    return v ? {
+      vehicleNumber: v.vehicleNumber || v.number || 'N/A',
+      brand: v.brand || '---',
+      model: v.model || '---'
+    } : { vehicleNumber: 'N/A', brand: '---', model: '---' };
   };
 
-  // Helper function to get service details by serviceId (if you have serviceId in records)
   const getServiceDetails = (serviceId) => {
-    if (!serviceId || !services || services.length === 0) {
-      return { serviceName: 'N/A', price: 'N/A' };
-    }
+    if (!serviceId || !services) return { serviceName: 'General Maintenance', price: 0 };
+    const s = services.find(s => s.id === serviceId);
+    return s ? { serviceName: s.serviceName || '---', price: s.price || 0 } : { serviceName: '---', price: 0 };
+  };
 
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-      return { serviceName: 'N/A', price: 'N/A' };
-    }
-
-    return {
-      serviceName: service.serviceName || service.name || 'N/A',
-      price: service.price || 'N/A',
-      serviceObj: service
+  const getStatusConfig = (status) => {
+    const s = status?.toUpperCase();
+    const configs = {
+      'COMPLETED': { color: 'success', icon: <CompletedIcon fontSize="small" />, label: 'FULFILLED', bg: 'rgba(76, 175, 80, 0.1)' },
+      'IN_PROGRESS': { color: 'warning', icon: <HistoryIcon fontSize="small" />, label: 'IN OPERATION', bg: 'rgba(255, 152, 0, 0.1)' },
+      'CANCELLED': { color: 'error', icon: null, label: 'ARCHIVED', bg: 'rgba(244, 67, 54, 0.1)' },
+      'PENDING': { color: 'info', icon: <PendingIcon fontSize="small" />, label: 'QUEUED', bg: 'rgba(33, 150, 243, 0.1)' }
     };
+    return configs[s] || configs['PENDING'];
   };
 
-  const getStatusChip = (status) => {
-    switch(status?.toUpperCase()) {
-      case 'COMPLETED':
-        return <Chip icon={<CompletedIcon />} label="COMPLETED" color="success" size="small" />;
-      case 'IN_PROGRESS':
-        return <Chip label="IN PROGRESS" color="warning" size="small" />;
-      case 'CANCELLED':
-        return <Chip label="CANCELLED" color="error" size="small" />;
-      default:
-        return <Chip icon={<PendingIcon />} label="PENDING" color="info" size="small" />;
-    }
-  };
-
-  // Format date safely
   const formatDate = (dateString) => {
-    if (!dateString || dateString === 'N/A' || dateString === 'null') return 'N/A';
+    if (!dateString || dateString === 'N/A') return '---';
     try {
-      // Check if dateString is already a Date object or timestamp
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'N/A';
-      return format(date, 'MMM dd, yyyy');
-    } catch (error) {
-      return 'N/A';
-    }
+      const d = new Date(dateString);
+      return isNaN(d.getTime()) ? '---' : format(d, 'MMM dd, yyyy');
+    } catch { return '---'; }
   };
 
-  // Handle pagination
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8, gap: 2, alignItems: 'center' }}>
+      <CircularProgress size={24} />
+      <Typography color="textSecondary" fontWeight="500">Retrieving operational logs...</Typography>
+    </Box>
+  );
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  if (!records || records.length === 0) return (
+    <Box sx={{ textAlign: 'center', py: 10 }}>
+      <Typography color="textSecondary" variant="h6">No Service History Detected</Typography>
+      <Typography variant="body2" color="textSecondary">Initiate a new service log to begin tracking metadata.</Typography>
+    </Box>
+  );
 
-  // Debug
-  useEffect(() => {
-    console.log('=== ServiceRecordList Debug ===');
-    console.log('Records:', records);
-    console.log('Vehicles:', vehicles);
-    console.log('Services:', services);
-    if (records.length > 0 && vehicles.length > 0) {
-      const firstRecord = records[0];
-      const vehicleDetails = getVehicleDetails(firstRecord.vehicleId);
-      console.log('First record vehicle details:', vehicleDetails);
-    }
-  }, [records, vehicles, services]);
-
-  if (loading) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography>Loading service records...</Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
-
-  if (!records || records.length === 0) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography color="textSecondary">
-          No service records found. Add your first service record!
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Get current page records
-  const currentRecords = records.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const displayedRecords = records.slice(0, (page + 1) * rowsPerPage);
 
   return (
-    <>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: 'grey.100' }}>
-              <TableCell><strong>Record ID</strong></TableCell>
-              <TableCell><strong>Vehicle</strong></TableCell>
-              <TableCell><strong>Service</strong></TableCell>
-              <TableCell><strong>Service Date</strong></TableCell>
-              <TableCell><strong>Next Service</strong></TableCell>
-              <TableCell><strong>Status</strong></TableCell>
-              <TableCell align="center"><strong>Actions</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentRecords.map((record, index) => {
-              // Get vehicle details
-              const vehicleDetails = getVehicleDetails(record.vehicleId);
+    <Box sx={{ p: 1 }}>
+      <Grid container spacing={3}>
+        {displayedRecords.map((record) => {
+          const vd = getVehicleDetails(record.vehicleId);
+          const sd = getServiceDetails(record.serviceId);
+          const rid = record.recordId || `SR-${record.id.toString().padStart(4, '0')}`;
+          const sc = getStatusConfig(record.status);
 
-              // Get service details - assuming record has serviceId
-              // If your records don't have serviceId, you may need to adjust this
-              const serviceDetails = getServiceDetails(record.serviceId);
-
-              // Get record ID
-              const recordId = record.recordId || record.id || `REC-${record.id?.toString().slice(-4)}` || 'N/A';
-
-              // Get service date and next service date
-              // Check different possible property names
-              const serviceDate = record.serviceDate || record.service_date || record.date;
-              const nextServiceDate = record.nextServiceDate || record.next_service_date || record.nextDate;
-
-              return (
-                <TableRow
-                  key={record.id || index}
-                  hover
-                  sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
-                >
-                  <TableCell>
+          return (
+            <Grid item xs={12} md={6} lg={4} key={record.id}>
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 4,
+                  border: '1px solid #eef2f6',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+                    borderColor: 'primary.light'
+                  }
+                }}
+              >
+                <Box sx={{ p: 2.5, pb: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Chip
-                      label={recordId}
-                      color="primary"
+                      label={rid}
                       size="small"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CarIcon fontSize="small" color="action" />
-                      <Box>
-                        <Typography fontWeight="medium">
-                          {vehicleDetails.vehicleNumber}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {vehicleDetails.brand} {vehicleDetails.model}
-                        </Typography>
-                      </Box>
-                      {record.vehicleId && (
-                        <Tooltip title="View Vehicle Records">
-                          <IconButton
-                            size="small"
-                            onClick={() => onViewVehicle(record)}
-                            sx={{ ml: 1 }}
-                          >
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <ServiceIcon fontSize="small" color="action" />
-                      <Box>
-                        <Typography fontWeight="medium">
-                          {serviceDetails.serviceName}
-                        </Typography>
-                        {serviceDetails.price && serviceDetails.price !== 'N/A' && (
-                          <Typography variant="caption" color="textSecondary">
-                            ${serviceDetails.price}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography>
-                      {formatDate(serviceDate)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography>
-                      {formatDate(nextServiceDate)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusChip(record.status)}
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      color="primary"
-                      onClick={() => onEdit(record)}
-                      title="Edit record"
-                      size="small"
-                      sx={{ mr: 1 }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to delete service record ${recordId}?`)) {
-                          onDelete(record.id);
-                        }
+                      sx={{
+                        fontWeight: 800,
+                        borderRadius: 1.5,
+                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                        color: 'primary.main',
+                        fontSize: '0.7rem',
+                        border: '1px solid rgba(25, 118, 210, 0.2)'
                       }}
-                      title="Delete record"
+                    />
+                    <Chip
+                      label={sc.label}
                       size="small"
+                      icon={React.cloneElement(sc.icon, { sx: { color: 'inherit', fontSize: '1rem' } })}
+                      sx={{
+                        borderRadius: 1.5,
+                        fontWeight: 800,
+                        fontSize: '0.65rem',
+                        backgroundColor: sc.bg,
+                        color: `${sc.color}.main`,
+                        border: `1px solid rgba(0,0,0,0.05)`
+                      }}
+                    />
+                  </Box>
+
+                  <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                    <Avatar sx={{ bgcolor: 'rgba(25,118,210,0.1)', color: 'primary.main', width: 48, height: 48 }}>
+                      <ServiceIcon fontSize="medium" />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body1" fontWeight="800" noWrap sx={{ maxWidth: 200 }}>
+                        {sd.serviceName}
+                      </Typography>
+                      <Typography variant="caption" color="success.main" fontWeight="800">
+                        Rs. {parseFloat(sd.price).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  <Divider sx={{ my: 1.5, opacity: 0.6 }} />
+
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(25,118,210,0.05)', color: 'primary.main' }}>
+                        <CarIcon sx={{ fontSize: '1rem' }} />
+                      </Avatar>
+                      <Box>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="body2" fontWeight="700">{vd.vehicleNumber}</Typography>
+                          <IconButton size="small" onClick={() => onViewVehicle(record)} sx={{ p: 0.2 }}>
+                            <ViewIcon sx={{ fontSize: '1rem' }} color="primary" />
+                          </IconButton>
+                        </Stack>
+                        <Typography variant="caption" color="textSecondary">{vd.brand} {vd.model}</Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(251, 140, 0, 0.05)', color: '#fb8c00' }}>
+                        <DateIcon sx={{ fontSize: '1rem' }} />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="caption" color="textSecondary" display="block">Service Date</Typography>
+                        <Typography variant="body2" fontWeight="700">{formatDate(record.serviceDate)}</Typography>
+                      </Box>
+                    </Box>
+                  </Stack>
+                </Box>
+
+                <Box sx={{ mt: 'auto', p: 2, pt: 1, backgroundColor: 'rgba(0,0,0,0.01)' }}>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      onClick={() => onEdit(record)}
+                      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      Audit
+                    </Button>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => { if (window.confirm('Delete operational record?')) onDelete(record.id); }}
+                      sx={{ borderRadius: 2, border: '1px solid', borderColor: 'error.light' }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  </Stack>
+                </Box>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
 
-      {/* Pagination */}
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={records.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-    </>
+      {records.length > displayedRecords.length && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setPage(p => p + 1)}
+            sx={{ borderRadius: 2, textTransform: 'none', px: 4 }}
+          >
+            Load More Records
+          </Button>
+        </Box>
+      )}
+    </Box>
   );
 };
 

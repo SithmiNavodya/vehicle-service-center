@@ -1,9 +1,33 @@
+// src/pages/Inventory/SuppliersPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Package } from 'lucide-react';
+import {
+  Container,
+  Typography,
+  Button,
+  Box,
+  TextField,
+  InputAdornment,
+  IconButton,
+  Alert,
+  Paper,
+  Breadcrumbs,
+  Link,
+  Snackbar,
+  Stack
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  Store as SupplierIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Business as BusinessIcon,
+  NavigateNext as NavigateNextIcon
+} from '@mui/icons-material';
 import useSuppliers from '../../hooks/useSuppliers';
-import { LoadingSpinner, SearchBar } from '../../components/common/common';
 import SupplierForm from '../../components/Supplier/SupplierForm';
-import SupplierCard from '../../components/Supplier/SupplierCard'; // Make sure this is imported
+import SupplierList from '../../components/Supplier/SupplierList';
 
 const SuppliersPage = () => {
   const {
@@ -13,51 +37,21 @@ const SuppliersPage = () => {
     createSupplier,
     updateSupplier,
     deleteSupplier,
-    searchSuppliers
+    fetchSuppliers
   } = useSuppliers();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
-  const [nextSupplierCode, setNextSupplierCode] = useState('');
-
-  // Generate next supplier code
-  useEffect(() => {
-    if (suppliers && suppliers.length > 0) {
-      // Extract numbers from existing codes (SUP_001 -> 1)
-      const numbers = suppliers
-        .map(s => {
-          if (s.supplierCode && s.supplierCode.startsWith('SUP_')) {
-            const numStr = s.supplierCode.substring(4);
-            const num = parseInt(numStr);
-            return isNaN(num) ? 0 : num;
-          }
-          return 0;
-        })
-        .filter(num => num > 0);
-
-      const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
-      const nextNumber = maxNumber + 1;
-      const paddedNumber = nextNumber.toString().padStart(3, '0');
-      setNextSupplierCode(`SUP_${paddedNumber}`);
-    } else {
-      setNextSupplierCode('SUP_001');
-    }
-  }, [suppliers]);
-
-  const handleSearch = (term) => {
-    setSearchTerm(term);
-    if (term.trim()) {
-      searchSuppliers(term);
-    }
-  };
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const handleCreateSupplier = async (supplierData) => {
     try {
       await createSupplier(supplierData);
       setShowForm(false);
-    } catch (error) {
-      console.error('Error creating supplier:', error);
+      showSnackbar('Supplier registered successfully!', 'success');
+    } catch (err) {
+      showSnackbar('Failed to create supplier.', 'error');
     }
   };
 
@@ -65,83 +59,122 @@ const SuppliersPage = () => {
     try {
       await updateSupplier(id, supplierData);
       setEditingSupplier(null);
-      setShowForm(false);
-    } catch (error) {
-      console.error('Error updating supplier:', error);
+      showSnackbar('Supplier information updated.', 'success');
+    } catch (err) {
+      showSnackbar('Failed to update supplier.', 'error');
     }
   };
 
   const handleDeleteSupplier = async (id) => {
-    if (window.confirm('Are you sure you want to delete this supplier?')) {
-      try {
-        await deleteSupplier(id);
-      } catch (error) {
-        console.error('Error deleting supplier:', error);
-      }
+    try {
+      await deleteSupplier(id);
+      showSnackbar('Supplier removed from database.', 'success');
+    } catch (err) {
+      showSnackbar('Failed to delete supplier.', 'error');
     }
   };
 
-  // Filter suppliers based on search
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
   const filteredSuppliers = suppliers.filter(supplier => {
     if (!searchTerm.trim()) return true;
-
     const searchLower = searchTerm.toLowerCase();
     return (
-      (supplier.supplierName && supplier.supplierName.toLowerCase().includes(searchLower)) ||
-      (supplier.supplierCode && supplier.supplierCode.toLowerCase().includes(searchLower)) ||
-      (supplier.email && supplier.email.toLowerCase().includes(searchLower)) ||
-      (supplier.phone && supplier.phone.includes(searchTerm))
+      (supplier.supplierName?.toLowerCase().includes(searchLower)) ||
+      (supplier.supplierCode?.toLowerCase().includes(searchLower)) ||
+      (supplier.email?.toLowerCase().includes(searchLower)) ||
+      (supplier.phone?.includes(searchTerm))
     );
   });
 
-  if (loading) {
-    return <LoadingSpinner text="Loading suppliers..." />;
-  }
-
-  if (error) {
-    return (
-      <div className="card">
-        <div className="text-red-600">Error: {error}</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Suppliers ({suppliers.length})</h1>
-          <p className="text-gray-600">Manage your suppliers and purchase orders</p>
-          {nextSupplierCode && (
-            <p className="text-sm text-gray-500 mt-1">
-              Next supplier code: <span className="font-semibold text-blue-600">{nextSupplierCode}</span>
-            </p>
-          )}
-        </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Supplier
-        </button>
-      </div>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Header Section */}
+      <Box sx={{ mb: 4 }}>
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
+          <Link underline="hover" color="inherit" href="/dashboard">Dashboard</Link>
+          <Typography color="primary.main" fontWeight="500">Inventory</Typography>
+          <Typography color="text.primary" fontWeight="500">Suppliers</Typography>
+        </Breadcrumbs>
 
-      {/* Search */}
-      <div className="card p-4">
-        <SearchBar
-          value={searchTerm}
-          onChange={handleSearch}
-          placeholder="Search suppliers by name, code, email, or phone..."
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
+          <Box>
+            <Typography variant="h3" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <BusinessIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              Supplier Directory
+            </Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mt: 1 }}>
+              Manage partnerships, procurement contact details and supplier codes
+            </Typography>
+          </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setShowForm(true)}
+            sx={{
+              borderRadius: 2,
+              px: 4,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 'bold',
+              background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
+              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+            }}
+          >
+            Add Supplier
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Search Bar */}
+      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 3, border: '1px solid #eee' }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            placeholder="Search by name, code, contact or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            variant="outlined"
+            size="small"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+              sx: { borderRadius: 2 }
+            }}
+            sx={{ flex: 1 }}
+          />
+          <IconButton onClick={fetchSuppliers} sx={{ border: '1px solid #ccc', borderRadius: 2 }}>
+            <RefreshIcon />
+          </IconButton>
+        </Box>
+      </Paper>
+
+      {/* Main Content */}
+      <Box sx={{ position: 'relative' }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+            {error}
+            <Button size="small" onClick={fetchSuppliers} sx={{ ml: 2 }}>Retry</Button>
+          </Alert>
+        )}
+
+        <SupplierList
+          suppliers={filteredSuppliers}
+          onEdit={(supplier) => setEditingSupplier(supplier)}
+          onDelete={handleDeleteSupplier}
+          loading={loading}
         />
-      </div>
+      </Box>
 
-      {/* Supplier Form Modal */}
+      {/* Form Dialog */}
       {(showForm || editingSupplier) && (
         <SupplierForm
           supplier={editingSupplier}
-          nextSupplierCode={nextSupplierCode}
           onClose={() => {
             setShowForm(false);
             setEditingSupplier(null);
@@ -153,45 +186,22 @@ const SuppliersPage = () => {
         />
       )}
 
-      {/* Suppliers Grid - USING SupplierCard COMPONENT */}
-      {filteredSuppliers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSuppliers.map(supplier => (
-            <SupplierCard
-              key={supplier.id}
-              supplier={supplier}
-              onEdit={() => setEditingSupplier(supplier)}
-              onDelete={() => handleDeleteSupplier(supplier.id)}
-            />
-          ))}
-        </div>
-      ) : suppliers.length > 0 ? (
-        // No results from search
-        <div className="card text-center py-12">
-          <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-800 mb-2">No suppliers found</h3>
-          <p className="text-gray-600 mb-4">
-            No suppliers match "{searchTerm}"
-          </p>
-        </div>
-      ) : (
-        // No suppliers at all
-        <div className="card text-center py-12">
-          <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-800 mb-2">No suppliers yet</h3>
-          <p className="text-gray-600 mb-4">
-            Get started by adding your first supplier
-          </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn-primary inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Add Supplier
-          </button>
-        </div>
-      )}
-    </div>
+      {/* Feedback Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%', borderRadius: 2 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 };
 
