@@ -226,7 +226,9 @@ const UsagePage = () => {
     }
     if (field === 'serviceRecordId') {
       const rec = serviceRecords.find(sr => sr.id === parseInt(value));
-      if (rec && rec.vehicleId) updatedForm.vehicleId = rec.vehicleId;
+      if (rec && rec.vehicleId) {
+        updatedForm.vehicleId = rec.vehicleId;
+      }
     }
     setFormData(updatedForm);
   };
@@ -474,7 +476,27 @@ const UsagePage = () => {
             <Grid item xs={12} md={6}>
               <TextField select fullWidth label="Service Ticket Reference" value={formData.serviceRecordId} onChange={(e) => handleFormChange('serviceRecordId', e.target.value)}>
                 <MenuItem value="">Direct Use (No Ticket)</MenuItem>
-                {serviceRecords.map(sr => <MenuItem key={sr.id} value={sr.id}>{sr.serviceNumber} - {sr.vehiclePlate}</MenuItem>)}
+                {serviceRecords.map(sr => (
+                  <MenuItem key={sr.id} value={sr.id}>
+                    {sr.recordId} - {sr.serviceNumber || 'N/A'}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                select
+                fullWidth
+                label="Assigned Vehicle"
+                value={formData.vehicleId}
+                onChange={(e) => handleFormChange('vehicleId', e.target.value)}
+              >
+                <MenuItem value="" disabled>Select a vehicle</MenuItem>
+                {vehicles.map(v => (
+                  <MenuItem key={v.id} value={v.id}>
+                    {v.vehicleNumber} - {v.brand} {v.model}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
