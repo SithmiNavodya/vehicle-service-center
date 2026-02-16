@@ -1,96 +1,159 @@
-// src/components/Customers/CustomerList.jsx
-import { Edit2, Trash2, Mail, Phone, MapPin } from 'lucide-react';
+// src/components/customers/CustomerList.jsx
+import React from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Avatar,
+  Typography,
+  Box,
+  Tooltip,
+  Stack,
+  CircularProgress
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Mail as MailIcon,
+  Phone as PhoneIcon,
+  LocationOn as MapPinIcon,
+  People as PeopleIcon
+} from '@mui/icons-material';
 
-const CustomerList = ({ customers, onEdit, onDelete }) => {
+const CustomerList = ({ customers, onEdit, onDelete, loading }) => {
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10, gap: 2 }}>
+        <CircularProgress size={40} />
+        <Typography color="textSecondary">Loading customer records...</Typography>
+      </Box>
+    );
+  }
+
   if (customers.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-12 text-center">
-        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Mail size={36} className="text-blue-600" />
-        </div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">No customers found</h3>
-        <p className="text-gray-500">Start by adding your first customer</p>
-      </div>
+      <Paper elevation={0} sx={{
+        textAlign: 'center',
+        py: 10,
+        border: '1px dashed #ccc',
+        borderRadius: 4,
+        backgroundColor: 'rgba(0,0,0,0.02)'
+      }}>
+        <PeopleIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+        <Typography variant="h6" color="textSecondary" gutterBottom>No Customers Found</Typography>
+        <Typography variant="body2" color="textSecondary">Add your first customer to start tracking services</Typography>
+      </Paper>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-left py-4 px-6 font-semibold text-gray-700">Customer</th>
-              <th className="text-left py-4 px-6 font-semibold text-gray-700">Contact Info</th>
-              <th className="text-left py-4 px-6 font-semibold text-gray-700">Address</th>
-              <th className="text-left py-4 px-6 font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {customers.map((customer) => (
-              <tr key={customer.id} className="border-b hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {customer.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-800">{customer.name}</div>
-                      <div className="text-sm text-gray-500">ID: {customer.id}</div>
-                    </div>
-                  </div>
-                </td>
-                
-                <td className="py-4 px-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} className="text-gray-400" />
-                      <span className="text-gray-700">{customer.email}</span>
-                    </div>
-                    {customer.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone size={14} className="text-gray-400" />
-                        <span className="text-gray-700">{customer.phone}</span>
-                      </div>
-                    )}
-                  </div>
-                </td>
-                
-                <td className="py-4 px-6">
-                  {customer.address ? (
-                    <div className="flex items-start gap-2">
-                      <MapPin size={14} className="text-gray-400 mt-1" />
-                      <span className="text-gray-700">{customer.address}</span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 italic">Not provided</span>
+    <TableContainer component={Paper} elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      <Table>
+        <TableHead>
+          <TableRow sx={{ background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)' }}>
+            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Customer</TableCell>
+            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Contact Info</TableCell>
+            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Address</TableCell>
+            <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {customers.map((customer) => (
+            <TableRow
+              key={customer.id}
+              hover
+              sx={{ '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.04)' } }}
+            >
+              <TableCell>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Avatar
+                    sx={{
+                      bgcolor: 'primary.main',
+                      fontWeight: 'bold',
+                      background: 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)'
+                    }}
+                  >
+                    {customer.name?.charAt(0).toUpperCase() || '?'}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="body1" fontWeight="600" color="text.primary">
+                      {customer.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      ID: {customer.id}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </TableCell>
+
+              <TableCell>
+                <Stack spacing={1}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MailIcon fontSize="small" color="action" sx={{ fontSize: 16 }} />
+                    <Typography variant="body2">{customer.email}</Typography>
+                  </Box>
+                  {customer.phone && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PhoneIcon fontSize="small" color="action" sx={{ fontSize: 16 }} />
+                      <Typography variant="body2">{customer.phone}</Typography>
+                    </Box>
                   )}
-                </td>
-                
-                <td className="py-4 px-6">
-                  <div className="flex gap-2">
-                    <button
+                </Stack>
+              </TableCell>
+
+              <TableCell>
+                {customer.address ? (
+                  <Box sx={{ display: 'flex', alignItems: 'start', gap: 1 }}>
+                    <MapPinIcon fontSize="small" color="action" sx={{ fontSize: 16, mt: 0.3 }} />
+                    <Typography variant="body2" sx={{ maxWidth: 250 }}>{customer.address}</Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.disabled" fontStyle="italic">Not provided</Typography>
+                )}
+              </TableCell>
+
+              <TableCell align="center">
+                <Stack direction="row" spacing={1} justifyContent="center">
+                  <Tooltip title="Edit Customer">
+                    <IconButton
+                      color="primary"
                       onClick={() => onEdit(customer)}
-                      className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                      title="Edit"
+                      size="small"
+                      sx={{
+                        backgroundColor: 'primary.light',
+                        color: 'white',
+                        '&:hover': { backgroundColor: 'primary.main' }
+                      }}
                     >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete Customer">
+                    <IconButton
+                      color="error"
                       onClick={() => onDelete(customer.id)}
-                      className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                      title="Delete"
+                      size="small"
+                      sx={{
+                        backgroundColor: 'error.light',
+                        color: 'white',
+                        '&:hover': { backgroundColor: 'error.main' }
+                      }}
                     >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 

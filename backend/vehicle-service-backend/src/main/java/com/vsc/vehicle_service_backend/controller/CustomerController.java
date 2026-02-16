@@ -9,7 +9,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers")
-@CrossOrigin(origins = "http://localhost:3000") // allow frontend access
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"}) // allow frontend access
 public class CustomerController {
 
     private final CustomerService customerService;

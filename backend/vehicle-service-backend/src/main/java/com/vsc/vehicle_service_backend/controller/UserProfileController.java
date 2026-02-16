@@ -12,7 +12,7 @@ import jakarta.validation.Valid;  // Make sure it's jakarta, not javax
 
 @RestController
 @RequestMapping("/api/v1/profile")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
 @RequiredArgsConstructor
 public class UserProfileController {
 

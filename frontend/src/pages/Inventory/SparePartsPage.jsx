@@ -9,26 +9,28 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Alert,
-  CircularProgress,
   Paper,
-  Chip
+  Chip,
+  Breadcrumbs,
+  Link,
+  Snackbar,
+  Stack
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   Refresh as RefreshIcon,
   Inventory as InventoryIcon,
-  FilterList as FilterListIcon
+  FilterList as FilterListIcon,
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
+  AttachMoney as TotalValueIcon,
+  NavigateNext as NavigateNextIcon
 } from '@mui/icons-material';
 import { sparePartService } from '../../services/sparePartService';
-//import sparePartService from '../../services/sparePartService';
 import SparePartForm from '../../components/spareparts/SparePartForm';
-import SparePartList from '../../components/spareparts/SparePartList'; // Add this import
+import SparePartList from '../../components/spareparts/SparePartList';
 
 const SparePartsPage = () => {
   const [spareParts, setSpareParts] = useState([]);
@@ -37,9 +39,8 @@ const SparePartsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingPart, setEditingPart] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [partToDelete, setPartToDelete] = useState(null);
   const [filter, setFilter] = useState('all'); // all, low-stock, in-stock
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Fetch spare parts
   const fetchSpareParts = async () => {
@@ -49,7 +50,7 @@ const SparePartsPage = () => {
       setSpareParts(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load spare parts. Please check if backend is running.');
+      setError('Failed to load spare parts inventory database.');
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -73,7 +74,6 @@ const SparePartsPage = () => {
   // Search functionality
   const searchedParts = filteredParts.filter(part => {
     if (!searchTerm.trim()) return true;
-
     const term = searchTerm.toLowerCase();
     return (
       part.partCode?.toLowerCase().includes(term) ||
@@ -83,261 +83,259 @@ const SparePartsPage = () => {
     );
   });
 
-  const handleSearch = () => {
-    // Search is handled in the filter above
+  const handleCreate = async (partData) => {
+    try {
+      await sparePartService.createSparePart(partData);
+      setShowForm(false);
+      showSnackbar('New spare part registered successfully!', 'success');
+      fetchSpareParts();
+    } catch (err) {
+      showSnackbar(err.message || 'Failed to create spare part.', 'error');
+    }
   };
-
- const handleCreate = async (partData) => {
-   try {
-     console.log('Creating part with data:', partData);
-
-     // Try different formats if one doesn't work
-     const response = await sparePartService.createSparePart(partData);
-
-     if (response) {
-       setShowForm(false);
-       showSnackbar('Spare part created successfully!', 'success');
-       fetchSpareParts();
-     }
-   } catch (err) {
-     console.error('Create error:', err);
-     const errorMessage = err.message || 'Failed to create spare part. Please check backend connection.';
-     showSnackbar(errorMessage, 'error');
-   }
- };
 
   const handleUpdate = async (partData) => {
     try {
-      console.log('Updating part:', editingPart.id, 'with data:', partData);
-
-      const response = await sparePartService.updateSparePart(editingPart.id, partData);
-
-      if (response) {
-        setEditingPart(null);
-        showSnackbar('Spare part updated successfully!', 'success');
-        fetchSpareParts();
-      }
+      await sparePartService.updateSparePart(editingPart.id, partData);
+      setEditingPart(null);
+      showSnackbar('Inventory record updated successfully!', 'success');
+      fetchSpareParts();
     } catch (err) {
-      console.error('Update error:', err);
-      const errorMessage = err.message || 'Failed to update spare part.';
-      showSnackbar(errorMessage, 'error');
+      showSnackbar(err.message || 'Failed to update spare part.', 'error');
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      console.log('Deleting part:', id);
-
-      const response = await sparePartService.deleteSparePart(id);
-
-      if (response) {
-        showSnackbar('Spare part deleted successfully!', 'success');
-        fetchSpareParts();
-      }
+      await sparePartService.deleteSparePart(id);
+      showSnackbar('Spare part removed from inventory.', 'success');
+      fetchSpareParts();
     } catch (err) {
-      console.error('Delete error:', err);
-      const errorMessage = err.message || 'Failed to delete spare part. It might be in use.';
-      showSnackbar(errorMessage, 'error');
+      showSnackbar(err.message || 'Failed to delete spare part.', 'error');
     }
   };
 
-  // Calculate stats
-  const stats = {
-    total: spareParts.length,
-    lowStock: spareParts.filter(p => p.quantity <= p.minQuantity).length,
-    totalValue: spareParts.reduce((sum, p) => sum + (p.price * p.quantity), 0)
-  };
-
-  // For snackbar
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const showSnackbar = (message, severity = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
 
+  // Stats Data
+  const stats = [
+    {
+      title: 'Inventory Size',
+      value: spareParts.length,
+      subtitle: 'Total Unique items',
+      icon: <InventoryIcon sx={{ fontSize: 32 }} />,
+      color: '#1976d2',
+      bg: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+    },
+    {
+      title: 'Low Stock Alerts',
+      value: spareParts.filter(p => p.quantity <= p.minQuantity).length,
+      subtitle: 'Critical fulfillment',
+      icon: <WarningIcon sx={{ fontSize: 32 }} />,
+      color: '#dc004e',
+      bg: 'linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%)',
+    },
+    {
+      title: 'Healthy Stock',
+      value: spareParts.filter(p => p.quantity > p.minQuantity).length,
+      subtitle: 'Operational items',
+      icon: <CheckCircleIcon sx={{ fontSize: 32 }} />,
+      color: '#2e7d32',
+      bg: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+    },
+    {
+      title: 'Inventory Value',
+      value: `Rs. ${spareParts.reduce((sum, p) => sum + (p.price * p.quantity), 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+      subtitle: 'Estimated Total',
+      icon: <TotalValueIcon sx={{ fontSize: 32 }} />,
+      color: '#ed6c02',
+      bg: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
+    }
+  ];
+
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
+      {/* Header Section */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            Spare Parts Inventory
-          </Typography>
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
+          <Link underline="hover" color="inherit" href="/dashboard">Dashboard</Link>
+          <Typography color="primary.main" fontWeight="500">Inventory</Typography>
+          <Typography color="text.primary" fontWeight="500">Spare Parts</Typography>
+        </Breadcrumbs>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
+          <Box>
+            <Typography variant="h3" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <InventoryIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              Spare Parts Inventory
+            </Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mt: 1 }}>
+              Manage spare parts records, stock levels and category associations
+            </Typography>
+          </Box>
+
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setShowForm(true)}
+            sx={{
+              borderRadius: 2,
+              px: 4,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 'bold',
+              background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
+              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+            }}
           >
             Add Spare Part
           </Button>
         </Box>
-
-        {/* Stats Cards */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h4">{stats.total}</Typography>
-              <Typography variant="body2" color="textSecondary">Total Items</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h4" color="error.main">{stats.lowStock}</Typography>
-              <Typography variant="body2" color="textSecondary">Low Stock Items</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h4" color="primary.main">
-                Rs. {stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">Total Inventory Value</Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-
-        {/* Search and Filter Bar */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search by part code, name, brand, or model..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ flex: 1, minWidth: '300px' }}
-            />
-
-            {/* Filter Chips */}
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Chip
-                label="All"
-                onClick={() => setFilter('all')}
-                color={filter === 'all' ? 'primary' : 'default'}
-                variant={filter === 'all' ? 'filled' : 'outlined'}
-              />
-              <Chip
-                label="Low Stock"
-                onClick={() => setFilter('low-stock')}
-                color={filter === 'low-stock' ? 'error' : 'default'}
-                variant={filter === 'low-stock' ? 'filled' : 'outlined'}
-              />
-              <Chip
-                label="In Stock"
-                onClick={() => setFilter('in-stock')}
-                color={filter === 'in-stock' ? 'success' : 'default'}
-                variant={filter === 'in-stock' ? 'filled' : 'outlined'}
-              />
-            </Box>
-
-            <IconButton onClick={fetchSpareParts} disabled={loading}>
-              <RefreshIcon />
-            </IconButton>
-          </Box>
-        </Paper>
       </Box>
 
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-          <Button
-            size="small"
-            onClick={fetchSpareParts}
-            sx={{ ml: 2 }}
-          >
-            Retry
-          </Button>
-        </Alert>
-      )}
+      {/* Stats Summary */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {stats.map((stat, index) => (
+          <Grid item xs={12} sm={6} md={3} key={index}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                borderRadius: 4,
+                color: stat.color,
+                background: stat.bg,
+                position: 'relative',
+                overflow: 'hidden',
+                border: '1px solid rgba(0,0,0,0.03)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.05)'
+                }
+              }}
+            >
+              <Box sx={{ position: 'absolute', top: -10, right: -10, opacity: 0.1, transform: 'rotate(15deg)', color: stat.color }}>
+                {React.cloneElement(stat.icon, { sx: { fontSize: 80 } })}
+              </Box>
 
-      {/* Use SparePartList Component */}
-      <SparePartList
-        spareParts={searchedParts}
-        onEdit={(part) => setEditingPart(part)}
-        onDelete={(id) => {
-          const part = spareParts.find(p => p.id === id);
-          setPartToDelete(part);
-          setDeleteDialogOpen(true);
-        }}
-        loading={loading}
-      />
+              <Stack spacing={0.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {React.cloneElement(stat.icon, { sx: { fontSize: 24 } })}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, letterSpacing: 1 }}>
+                    {stat.title}
+                  </Typography>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 900, color: 'text.primary' }}>
+                  {stat.value}
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', opacity: 0.8 }}>
+                  {stat.subtitle}
+                </Typography>
+              </Stack>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Search and Filters */}
+      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 3, border: '1px solid #eee' }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            placeholder="Search by part code, name, brand, or model..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            variant="outlined"
+            size="small"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+              sx: { borderRadius: 2 }
+            }}
+            sx={{ flex: 1, minWidth: '300px' }}
+          />
+
+          <Stack direction="row" spacing={1}>
+            <Chip
+              label="All"
+              onClick={() => setFilter('all')}
+              color={filter === 'all' ? 'primary' : 'default'}
+              sx={{ fontWeight: 'bold' }}
+            />
+            <Chip
+              label="Low Stock"
+              icon={<WarningIcon fontSize="small" />}
+              onClick={() => setFilter('low-stock')}
+              color={filter === 'low-stock' ? 'error' : 'default'}
+              sx={{ fontWeight: 'bold' }}
+            />
+            <Chip
+              label="In Stock"
+              icon={<CheckCircleIcon fontSize="small" />}
+              onClick={() => setFilter('in-stock')}
+              color={filter === 'in-stock' ? 'success' : 'default'}
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Stack>
+
+          <IconButton
+            onClick={fetchSpareParts}
+            disabled={loading}
+            sx={{ border: '1px solid #ccc', borderRadius: 2 }}
+          >
+            <RefreshIcon />
+          </IconButton>
+        </Box>
+      </Paper>
+
+      {/* Main List Section */}
+      <Box sx={{ position: 'relative' }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+            {error}
+            <Button size="small" onClick={fetchSpareParts} sx={{ ml: 2 }}>Retry</Button>
+          </Alert>
+        )}
+
+        <SparePartList
+          spareParts={searchedParts}
+          onEdit={(part) => setEditingPart(part)}
+          onDelete={handleDelete}
+          loading={loading}
+        />
+      </Box>
 
       {/* Form Dialog */}
-      <Dialog
-        open={showForm || !!editingPart}
-        onClose={() => {
-          setShowForm(false);
-          setEditingPart(null);
-        }}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {editingPart ? 'Edit Spare Part' : 'Add New Spare Part'}
-        </DialogTitle>
-        <DialogContent>
-          <SparePartForm
-            part={editingPart}
-            onSubmit={editingPart ? handleUpdate : handleCreate}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingPart(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {(showForm || editingPart) && (
+        <SparePartForm
+          part={editingPart}
+          onSubmit={editingPart ? handleUpdate : handleCreate}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingPart(null);
+          }}
+        />
+      )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
+      {/* Feedback Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <DialogTitle>Delete Spare Part</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete "
-            <strong>{partToDelete?.partName}</strong>
-            " ({partToDelete?.partCode})?
-          </Typography>
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            This action cannot be undone.
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              handleDelete(partToDelete.id);
-              setDeleteDialogOpen(false);
-            }}
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar (simplified) */}
-      {snackbar.open && (
         <Alert
-          severity={snackbar.severity}
-          sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999 }}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%', borderRadius: 2 }}
         >
           {snackbar.message}
         </Alert>
-      )}
+      </Snackbar>
     </Container>
   );
 };

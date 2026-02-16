@@ -1,7 +1,32 @@
+// src/components/Supplier/SupplierForm.jsx
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Grid,
+  Box,
+  Typography,
+  IconButton,
+  InputAdornment,
+  Divider,
+  Stack,
+  CircularProgress
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Save as SaveIcon,
+  Business as BusinessIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  LocationOn as AddressIcon
+} from '@mui/icons-material';
+import { supplierService } from '../../services/supplierService';
 
-const SupplierForm = ({ supplier, onClose, onSubmit, nextSupplierCode }) => {
+const SupplierForm = ({ supplier, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     supplierCode: '',
     supplierName: '',
@@ -12,10 +37,32 @@ const SupplierForm = ({ supplier, onClose, onSubmit, nextSupplierCode }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nextSupplierCode, setNextSupplierCode] = useState('SUP_001');
+
+  useEffect(() => {
+    const fetchNextCode = async () => {
+      try {
+        const suppliers = await supplierService.getAllSuppliers();
+        const maxCode = suppliers.reduce((max, s) => {
+          if (s.supplierCode?.startsWith('SUP_')) {
+            const num = parseInt(s.supplierCode.substring(4)) || 0;
+            return Math.max(max, num);
+          }
+          return max;
+        }, 0);
+        setNextSupplierCode(`SUP_${String(maxCode + 1).padStart(3, '0')}`);
+      } catch (err) {
+        console.error('Error fetching next code:', err);
+      }
+    };
+
+    if (!supplier) {
+      fetchNextCode();
+    }
+  }, [supplier]);
 
   useEffect(() => {
     if (supplier) {
-      // Editing existing supplier - use existing code
       setFormData({
         supplierCode: supplier.supplierCode || '',
         supplierName: supplier.supplierName || '',
@@ -24,225 +71,156 @@ const SupplierForm = ({ supplier, onClose, onSubmit, nextSupplierCode }) => {
         address: supplier.address || '',
       });
     } else {
-      // New supplier - auto-generate code
-      setFormData(prev => ({
-        ...prev,
-        supplierCode: nextSupplierCode || 'SUP_001', // Default if no next code
-      }));
+      setFormData(prev => ({ ...prev, supplierCode: nextSupplierCode }));
     }
   }, [supplier, nextSupplierCode]);
 
   const validate = () => {
     const newErrors = {};
-
-    if (!formData.supplierName.trim()) {
-      newErrors.supplierName = 'Supplier name is required';
-    }
-
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (formData.phone && !/^[\d\s\+\-\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = 'Phone number is invalid';
-    }
-
+    if (!formData.supplierName.trim()) newErrors.supplierName = 'Supplier Name is required';
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Valid email is required';
+    if (!formData.phone?.trim()) newErrors.phone = 'Phone number is required';
     return newErrors;
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  const validationErrors = validate();
-
-  if (Object.keys(validationErrors).length > 0) {
-    setErrors(validationErrors);
-    return;
-  }
-
-  setIsSubmitting(true);
-  try {
-    console.log('Form submitting data:', formData);
-    console.log('Is editing?', !!supplier);
-    console.log('Supplier ID if editing:', supplier?.id);
-
-    await onSubmit(formData);
-    onClose();
-  } catch (error) {
-    console.error('Error submitting form:', error);
-    console.error('Error response:', error.response?.data);
-    setErrors({
-      submit: error.response?.data?.message || error.message || 'Failed to save supplier'
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    // Don't allow changes to supplierCode if editing
-    if (supplier && name === 'supplierCode') {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: '',
-      }));
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+      onClose();
+    } catch (error) {
+      setErrors({ submit: error.message || 'Failed to register partner' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-800">
-            {supplier ? 'Edit Supplier' : 'Add New Supplier'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-            disabled={isSubmitting}
+    <Dialog
+      open={true}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+        <Box>
+          <Typography variant="h5" fontWeight="bold">
+            {supplier ? 'Update Partner Profile' : 'Register New Supplier'}
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            {supplier ? 'Modify contact details and business information' : 'Onboard a new spare parts provider'}
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} size="small" sx={{ borderRadius: 2 }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <Divider sx={{ mb: 1 }} />
+
+      <DialogContent sx={{ py: 3 }}>
+        <Box component="form" onSubmit={handleSubmit} noValidate>
+          <Grid container spacing={3}>
+            {errors.submit && (
+              <Grid item xs={12}>
+                <Typography color="error" variant="body2">{errors.submit}</Typography>
+              </Grid>
+            )}
+
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth label="Registry Code" disabled
+                value={formData.supplierCode}
+                InputProps={{ sx: { borderRadius: 2, bgcolor: 'rgba(0,0,0,0.03)' } }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={8}>
+              <TextField
+                required fullWidth label="Company Name" name="supplierName"
+                value={formData.supplierName} onChange={handleChange}
+                error={!!errors.supplierName} helperText={errors.supplierName}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><BusinessIcon color="primary" fontSize="small" /></InputAdornment>,
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                required fullWidth label="Contact Phone" name="phone"
+                value={formData.phone} onChange={handleChange}
+                error={!!errors.phone} helperText={errors.phone}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><PhoneIcon color="primary" fontSize="small" /></InputAdornment>,
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth label="Business Email" name="email"
+                value={formData.email} onChange={handleChange}
+                error={!!errors.email} helperText={errors.email}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><EmailIcon color="primary" fontSize="small" /></InputAdornment>,
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth label="Operational Address" name="address" multiline rows={3}
+                value={formData.address} onChange={handleChange}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}><AddressIcon color="primary" fontSize="small" /></InputAdornment>,
+                  sx: { borderRadius: 2 }
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 3, pt: 1 }}>
+        <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
+          <Button
+            fullWidth onClick={onClose} variant="outlined"
+            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', py: 1.2 }}
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {errors.submit && (
-            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-              {errors.submit}
-            </div>
-          )}
-
-          {/* Supplier Code - READ ONLY */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Supplier Code {supplier ? '' : '(Auto-generated)'}
-            </label>
-            <input
-              type="text"
-              name="supplierCode"
-              value={formData.supplierCode}
-              readOnly
-              className="input-field bg-gray-50 cursor-not-allowed"
-              disabled={true}
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              {supplier ? 'Supplier code cannot be changed' : 'System will auto-generate code'}
-            </p>
-          </div>
-
-          {/* Supplier Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Supplier Name *
-            </label>
-            <input
-              type="text"
-              name="supplierName"
-              value={formData.supplierName}
-              onChange={handleChange}
-              className={`input-field ${errors.supplierName ? 'border-red-500' : ''}`}
-              placeholder="AutoParts Lanka Ltd"
-              disabled={isSubmitting}
-            />
-            {errors.supplierName && (
-              <p className="mt-1 text-sm text-red-600">{errors.supplierName}</p>
-            )}
-          </div>
-
-          {/* Phone */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className={`input-field ${errors.phone ? 'border-red-500' : ''}`}
-              placeholder="0112345678"
-              disabled={isSubmitting}
-            />
-            {errors.phone && (
-              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-            )}
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={`input-field ${errors.email ? 'border-red-500' : ''}`}
-              placeholder="orders@company.lk"
-              disabled={isSubmitting}
-            />
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-            )}
-          </div>
-
-          {/* Address */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Address
-            </label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              rows={3}
-              className={`input-field ${errors.address ? 'border-red-500' : ''}`}
-              placeholder="No. 123, Galle Road, Colombo 03"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  {supplier ? 'Updating...' : 'Creating...'}
-                </>
-              ) : (
-                supplier ? 'Update Supplier' : 'Create Supplier'
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            Cancel
+          </Button>
+          <Button
+            fullWidth onClick={handleSubmit} variant="contained"
+            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+            disabled={isSubmitting}
+            sx={{
+              borderRadius: 2, textTransform: 'none', fontWeight: 'bold', py: 1.2,
+              background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
+            }}
+          >
+            {supplier ? 'Update Records' : 'Confirm Registration'}
+          </Button>
+        </Stack>
+      </DialogActions>
+    </Dialog>
   );
 };
 

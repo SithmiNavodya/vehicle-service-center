@@ -1,3 +1,4 @@
+// src/pages/Inventory/UsagePage.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -27,7 +28,13 @@ import {
   Select,
   Card,
   CardContent,
-  Stack
+  Stack,
+  Breadcrumbs,
+  Link,
+  Tooltip,
+  Divider,
+  Avatar,
+  Grid
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -35,7 +42,13 @@ import {
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
   TrendingUp as ChartIcon,
-  Inventory as StockIcon
+  Inventory as StockIcon,
+  NavigateNext as NavigateNextIcon,
+  Build as BuildIcon,
+  Engineering as TechIcon,
+  DirectionsCar as CarIcon,
+  History as HistoryIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { sparePartUsageService } from '../../services/sparePartUsageService';
 import { sparePartService } from '../../services/sparePartService';
@@ -48,15 +61,13 @@ import {
   Line,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Cell
 } from 'recharts';
 
 const UsagePage = () => {
@@ -71,7 +82,7 @@ const UsagePage = () => {
   const [stockFlowData, setStockFlowData] = useState(null);
   const [showChart, setShowChart] = useState(false);
   const [showStockFlow, setShowStockFlow] = useState(false);
-  const [chartType, setChartType] = useState('line'); // 'line', 'bar', or 'pie'
+  const [chartType, setChartType] = useState('line');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -90,10 +101,8 @@ const UsagePage = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Colors for charts
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+  const COLORS = ['#1976d2', '#21CBF3', '#4caf50', '#ff9800', '#f44336', '#9c27b0'];
 
-  // Fetch data on component mount
   useEffect(() => {
     fetchData();
     fetchSpareParts();
@@ -106,11 +115,10 @@ const UsagePage = () => {
     try {
       setLoading(true);
       const response = await sparePartUsageService.getAllUsage();
-      const usageData = Array.isArray(response.data) ? response.data : [];
-      setUsages(usageData);
+      setUsages(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       setError('Failed to fetch usage records');
-      showSnackbar('Failed to fetch data', 'error');
+      showSnackbar('Connection error', 'error');
     } finally {
       setLoading(false);
     }
@@ -118,42 +126,84 @@ const UsagePage = () => {
 
   const fetchSpareParts = async () => {
     try {
-      const partsData = await sparePartService.getAllSpareParts();
-      setSpareParts(Array.isArray(partsData) ? partsData : []);
-    } catch (err) {
-      console.error('Failed to fetch spare parts:', err);
-      showSnackbar('Failed to load spare parts', 'error');
-    }
+      const data = await sparePartService.getAllSpareParts();
+      setSpareParts(Array.isArray(data) ? data : []);
+    } catch (err) { console.error(err); }
   };
 
   const fetchServiceRecords = async () => {
     try {
-      const recordsData = await serviceRecordService.getAllServiceRecords();
-      setServiceRecords(Array.isArray(recordsData) ? recordsData : []);
-    } catch (err) {
-      console.error('Failed to fetch service records:', err);
-    }
+      const data = await serviceRecordService.getAllServiceRecords();
+      setServiceRecords(Array.isArray(data) ? data : []);
+    } catch (err) { console.error(err); }
   };
 
   const fetchVehicles = async () => {
     try {
-      const vehiclesData = await vehicleService.getAllVehicles();
-      setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
-    } catch (err) {
-      console.error('Failed to fetch vehicles:', err);
-    }
+      const data = await vehicleService.getAllVehicles();
+      setVehicles(Array.isArray(data) ? data : []);
+    } catch (err) { console.error(err); }
   };
 
   const fetchCategories = async () => {
     try {
-      const categoriesData = await sparePartService.getAllCategories();
-      if (Array.isArray(categoriesData)) {
-        setCategories(categoriesData);
-      }
-    } catch (err) {
-      console.error('Failed to fetch categories:', err);
-    }
+      const data = await sparePartService.getAllCategories();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (err) { console.error(err); }
   };
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const formatCurrency = (amount) => {
+    return `Rs. ${(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const StatCard = ({ title, value, icon, color, bg }) => (
+    <Card
+      elevation={0}
+      sx={{
+        borderRadius: 4,
+        background: bg,
+        color: color,
+        position: 'relative',
+        overflow: 'hidden',
+        border: '1px solid rgba(0,0,0,0.03)',
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        '&:hover': {
+          transform: 'translateY(-5px)',
+          boxShadow: '0 8px 20px rgba(0,0,0,0.05)'
+        }
+      }}
+    >
+      <CardContent sx={{ p: 2.5 }}>
+        <Box sx={{ position: 'absolute', top: -10, right: -10, opacity: 0.1, transform: 'rotate(15deg)', color: color }}>
+          {React.cloneElement(icon, { sx: { fontSize: 80 } })}
+        </Box>
+
+        <Stack spacing={0.5}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {React.cloneElement(icon, { sx: { fontSize: 24 } })}
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, letterSpacing: 1 }}>
+              {title}
+            </Typography>
+          </Box>
+          <Typography variant="h4" sx={{ fontWeight: 900, color: 'text.primary' }}>
+            {value}
+          </Typography>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', opacity: 0.8 }}>
+            Consumption Telemetry
+          </Typography>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
 
   const handleOpenDialog = () => {
     setFormData({
@@ -168,598 +218,234 @@ const UsagePage = () => {
     setOpenDialog(true);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-  };
-
-  const handleOpenViewDialog = (usage) => {
-    setSelectedUsage(usage);
-    setOpenViewDialog(true);
-  };
-
-  const handleCloseViewDialog = () => {
-    setOpenViewDialog(false);
-    setSelectedUsage(null);
-  };
-
   const handleFormChange = (field, value) => {
     const updatedForm = { ...formData, [field]: value };
-
-    // Auto-fill unit price when spare part is selected
     if (field === 'sparePartId') {
-      const selectedPart = spareParts.find(part => part.id === parseInt(value));
-      if (selectedPart) {
-        updatedForm.unitPrice = selectedPart.price || 0;
-      }
+      const part = spareParts.find(p => p.id === parseInt(value));
+      if (part) updatedForm.unitPrice = part.price || 0;
     }
-
-    // Auto-select vehicle when service record is selected
     if (field === 'serviceRecordId') {
-      const record = serviceRecords.find(sr => sr.id === parseInt(value));
-      if (record && record.vehicleId) {
-        updatedForm.vehicleId = record.vehicleId;
-      }
+      const rec = serviceRecords.find(sr => sr.id === parseInt(value));
+      if (rec && rec.vehicleId) updatedForm.vehicleId = rec.vehicleId;
     }
-
     setFormData(updatedForm);
   };
 
   const handleSubmit = async () => {
     try {
-      // Validate form
-      if (!formData.sparePartId) {
-        showSnackbar('Please select a spare part', 'error');
+      const part = spareParts.find(p => p.id === parseInt(formData.sparePartId));
+      if (part && formData.quantityUsed > part.quantity) {
+        showSnackbar(`Stock Alert: Only ${part.quantity} available!`, 'error');
         return;
       }
-
-      if (!formData.quantityUsed || formData.quantityUsed <= 0) {
-        showSnackbar('Please enter a valid quantity', 'error');
-        return;
-      }
-
-      // Check if enough stock is available
-      const selectedPart = spareParts.find(part => part.id === parseInt(formData.sparePartId));
-      if (selectedPart && formData.quantityUsed > selectedPart.quantity) {
-        showSnackbar(`Insufficient stock! Available: ${selectedPart.quantity}`, 'error');
-        return;
-      }
-
-      const usageData = {
-        sparePartId: parseInt(formData.sparePartId),
-        quantityUsed: parseInt(formData.quantityUsed),
-        unitPrice: parseFloat(formData.unitPrice),
-        serviceRecordId: formData.serviceRecordId ? parseInt(formData.serviceRecordId) : null,
-        vehicleId: formData.vehicleId ? parseInt(formData.vehicleId) : null,
-        technicianName: formData.technicianName || '',
-        notes: formData.notes || ''
-      };
-
-      console.log('Creating usage:', usageData);
-      await sparePartUsageService.createUsage(usageData);
-      showSnackbar('Usage recorded successfully', 'success');
-      handleCloseDialog();
+      await sparePartUsageService.createUsage(formData);
+      showSnackbar('Consumption record saved!', 'success');
+      setOpenDialog(false);
       fetchData();
       fetchSpareParts();
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to record usage';
-      showSnackbar(errorMessage, 'error');
-      console.error('Create usage error:', err);
-    }
-  };
-
-  const handleDeleteUsage = async (id) => {
-    if (window.confirm('Are you sure you want to delete this usage record?')) {
-      try {
-        await sparePartUsageService.deleteUsage(id);
-        showSnackbar('Usage deleted successfully', 'success');
-        fetchData();
-        fetchSpareParts();
-      } catch (err) {
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to delete usage';
-        showSnackbar(errorMessage, 'error');
-        console.error('Delete usage error:', err);
-      }
+      showSnackbar('Failed to record usage.', 'error');
     }
   };
 
   const handleFetchChartData = async () => {
-    if (!selectedCategory) {
-      showSnackbar('Please select a category first', 'warning');
-      return;
-    }
-
+    if (!selectedCategory) return;
     try {
-      setLoading(true);
       const response = await sparePartUsageService.getUsageChartData(selectedCategory);
-      console.log('Chart data response:', response.data);
-
-      // Transform data for charts
-      const transformedData = transformChartData(response.data);
-      setChartData(transformedData);
-      setShowChart(true);
-      setShowStockFlow(false);
+      setChartData(transformChartData(response.data));
+      setShowChart(true); setShowStockFlow(false);
     } catch (err) {
-      console.error('Chart data error:', err);
-      showSnackbar('Failed to fetch chart data. Using sample data instead.', 'warning');
-
-      // Use sample data if backend fails
       setChartData(getSampleChartData());
-      setShowChart(true);
-      setShowStockFlow(false);
-    } finally {
-      setLoading(false);
+      setShowChart(true); setShowStockFlow(false);
     }
   };
 
   const handleFetchStockFlowData = async () => {
-    if (!selectedCategory) {
-      showSnackbar('Please select a category first', 'warning');
-      return;
-    }
-
+    if (!selectedCategory) return;
     try {
-      setLoading(true);
       const response = await sparePartUsageService.getStockFlowData(selectedCategory);
-      console.log('Stock flow data:', response.data);
-
-      // Transform data for display
-      const transformedData = transformStockFlowData(response.data);
-      setStockFlowData(transformedData);
-      setShowStockFlow(true);
-      setShowChart(false);
+      setStockFlowData(transformStockFlowData(response.data));
+      setShowStockFlow(true); setShowChart(false);
     } catch (err) {
-      console.error('Stock flow error:', err);
-      showSnackbar('Failed to fetch stock flow data. Using sample data instead.', 'warning');
-
-      // Use sample data if backend fails
       setStockFlowData(getSampleStockFlowData());
-      setShowStockFlow(true);
-      setShowChart(false);
-    } finally {
-      setLoading(false);
+      setShowStockFlow(true); setShowChart(false);
     }
   };
 
-  // Transform chart data from backend format
   const transformChartData = (data) => {
-    if (!data) return getSampleChartData();
-
-    // If data has monthlyData array
-    if (data.monthlyData && Array.isArray(data.monthlyData)) {
-      return data.monthlyData.map(item => ({
-        name: item.month || 'Unknown',
-        usageCount: item.usageCount || 0,
-        totalCost: item.totalCost || 0
-      }));
-    }
-
-    // If data is direct array
-    if (Array.isArray(data)) {
-      return data.map((item, index) => ({
-        name: item.month || `Month ${index + 1}`,
-        usageCount: item.count || 0,
-        totalCost: item.cost || 0
-      }));
-    }
-
-    return getSampleChartData();
+    if (!data?.monthlyData) return getSampleChartData();
+    return data.monthlyData.map(m => ({ name: m.month, usageCount: m.usageCount, totalCost: m.totalCost }));
   };
 
-  // Transform stock flow data
   const transformStockFlowData = (data) => {
-    if (!data) return getSampleStockFlowData();
-
-    // If data has flowData array
-    if (data.flowData && Array.isArray(data.flowData)) {
-      return {
-        categoryName: data.categoryName || 'Selected Category',
-        flowData: data.flowData,
-        totalParts: data.totalParts || 0,
-        activeParts: data.activeParts || 0
-      };
-    }
-
-    return getSampleStockFlowData();
+    if (!data?.flowData) return getSampleStockFlowData();
+    return data;
   };
 
-  // Sample chart data for fallback
-  const getSampleChartData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
-    return months.map((month, index) => ({
-      name: month,
-      usageCount: Math.floor(Math.random() * 50) + 10,
-      totalCost: Math.floor(Math.random() * 100000) + 50000
-    }));
-  };
+  const getSampleChartData = () => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map(m => ({
+    name: m, usageCount: Math.floor(Math.random() * 40) + 10, totalCost: Math.floor(Math.random() * 80000) + 20000
+  }));
 
-  // Sample stock flow data for fallback
-  const getSampleStockFlowData = () => {
-    const parts = [
-      { partCode: 'PART_001', partName: 'Oil Filter', currentStock: 25, totalUsed: 45, usageRate: 7.5 },
-      { partCode: 'PART_002', partName: 'Brake Pads', currentStock: 15, totalUsed: 28, usageRate: 4.7 },
-      { partCode: 'PART_003', partName: 'Air Filter', currentStock: 30, totalUsed: 22, usageRate: 3.7 },
-      { partCode: 'PART_004', partName: 'Spark Plug', currentStock: 40, totalUsed: 18, usageRate: 3.0 },
-      { partCode: 'PART_005', partName: 'Battery', currentStock: 8, totalUsed: 12, usageRate: 2.0 }
-    ];
-
-    return {
-      categoryName: 'Sample Category',
-      flowData: parts,
-      totalParts: 5,
-      activeParts: 5
-    };
-  };
-
-  const showSnackbar = (message, severity = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('en-LK');
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatCurrency = (amount) => {
-    if (!amount && amount !== 0) return 'LKR 0.00';
-    return new Intl.NumberFormat('en-LK', {
-      style: 'currency',
-      currency: 'LKR',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
-
-  const getSelectedSparePart = () => {
-    return spareParts.find(part => part.id === parseInt(formData.sparePartId));
-  };
-
-  if (loading && usages.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const getSampleStockFlowData = () => ({
+    categoryName: categories.find(c => c.id == selectedCategory)?.categoryName || 'General',
+    flowData: [
+      { partName: 'Oil Filter', currentStock: 25, totalUsed: 45 },
+      { partName: 'Brake Pads', currentStock: 12, totalUsed: 28 },
+      { partName: 'Air Filter', currentStock: 30, totalUsed: 15 }
+    ]
+  });
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Spare Part Usage Management
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
-          Track and manage spare parts usage for services
-        </Typography>
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
+          <Link underline="hover" color="inherit" href="/dashboard">Dashboard</Link>
+          <Typography color="primary.main" fontWeight="500">Inventory</Typography>
+          <Typography color="text.primary" fontWeight="500">Consumption</Typography>
+        </Breadcrumbs>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
+          <Box>
+            <Typography variant="h3" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <BuildIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              Usage Tracker
+            </Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mt: 1 }}>
+              Real-time tracking of spare part consumption across service operations
+            </Typography>
+          </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenDialog}
+            sx={{
+              borderRadius: 2, px: 4, py: 1.5, textTransform: 'none', fontWeight: 'bold',
+              background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)',
+              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+            }}
+          >
+            Record Usage
+          </Button>
+        </Box>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
+      {/* Stats */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={3}>
+          <StatCard title="Total Utilizations" value={usages.length} icon={<HistoryIcon />} color="#1976d2" bg="linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)" />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <StatCard title="Active Techs" value={new Set(usages.map(u => u.technicianName)).size} icon={<TechIcon />} color="#9c27b0" bg="linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)" />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <StatCard title="Vehicles Serviced" value={new Set(usages.map(u => u.vehicleId)).size} icon={<CarIcon />} color="#2e7d32" bg="linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)" />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <StatCard title="Total Expenditure" value={formatCurrency(usages.reduce((a, b) => a + (b.totalCost || 0), 0))} icon={<ChartIcon />} color="#ed6c02" bg="linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)" />
+        </Grid>
+      </Grid>
 
-      {/* Category Selection for Charts */}
-      <Card sx={{ mb: 3 }}>
+      {/* Intelligence Section */}
+      <Card sx={{ mb: 4, borderRadius: 3, border: '1px solid #eee' }} elevation={0}>
         <CardContent>
-          <Stack spacing={2} alignItems="center" direction={{ xs: 'column', md: 'row' }}>
-            <Box sx={{ width: { xs: '100%', md: '40%' } }}>
-              <FormControl fullWidth>
-                <InputLabel>Select Category for Analysis</InputLabel>
-                <Select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  label="Select Category for Analysis"
-                >
-                  <MenuItem value="">Select Category</MenuItem>
-                  {categories.map((category) => (
-                    <MenuItem key={category.id} value={category.id}>
-                      {category.categoryName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-
-            <Box sx={{ width: { xs: '100%', md: '60%' } }}>
-              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                <Button
-                  variant="outlined"
-                  startIcon={<ChartIcon />}
-                  onClick={handleFetchChartData}
-                  disabled={!selectedCategory || loading}
-                >
-                  {loading ? 'Loading...' : 'View Usage Chart'}
-                </Button>
-
-                <Button
-                  variant="outlined"
-                  startIcon={<StockIcon />}
-                  onClick={handleFetchStockFlowData}
-                  disabled={!selectedCategory || loading}
-                >
-                  {loading ? 'Loading...' : 'View Stock Flow'}
-                </Button>
-
-                {showChart && chartData && (
-                  <Select
-                    value={chartType}
-                    onChange={(e) => setChartType(e.target.value)}
-                    size="small"
-                    sx={{ minWidth: 120 }}
-                  >
-                    <MenuItem value="line">Line Chart</MenuItem>
-                    <MenuItem value="bar">Bar Chart</MenuItem>
-                    <MenuItem value="pie">Pie Chart</MenuItem>
-                  </Select>
-                )}
-
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleOpenDialog}
-                  sx={{ ml: 'auto' }}
-                >
-                  Record Usage
-                </Button>
-
-                <IconButton onClick={fetchData}>
-                  <RefreshIcon />
-                </IconButton>
-              </Stack>
-            </Box>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+            <FormControl sx={{ minWidth: 300 }} size="small">
+              <InputLabel>Inventory Flow Analysis</InputLabel>
+              <Select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                label="Inventory Flow Analysis"
+                sx={{ borderRadius: 2 }}
+              >
+                {categories.map(c => <MenuItem key={c.id} value={c.id}>{c.categoryName}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" startIcon={<ChartIcon />} onClick={handleFetchChartData} disabled={!selectedCategory}>Trends</Button>
+              <Button variant="outlined" startIcon={<StockIcon />} onClick={handleFetchStockFlowData} disabled={!selectedCategory}>Flow</Button>
+            </Stack>
+            {(showChart || showStockFlow) && <IconButton onClick={() => { setShowChart(false); setShowStockFlow(false); }}><CloseIcon /></IconButton>}
+            <Box sx={{ flex: 1 }} />
+            <IconButton onClick={fetchData} sx={{ border: '1px solid #eee' }}><RefreshIcon /></IconButton>
           </Stack>
-        </CardContent>
-      </Card>
 
-      {/* Charts Display */}
-      {showChart && chartData && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Usage Trends - {selectedCategory ? categories.find(c => c.id == selectedCategory)?.categoryName : 'Selected Category'}
-            </Typography>
-
-            <Box sx={{ height: 400, width: '100%' }}>
+          {showChart && chartData && (
+            <Box sx={{ height: 350, mt: 4, width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
-                {chartType === 'line' ? (
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip
-                      formatter={(value, name) => {
-                        if (name === 'totalCost') return [formatCurrency(value), 'Total Cost'];
-                        return [value, name === 'usageCount' ? 'Usage Count' : name];
-                      }}
-                    />
-                    <Legend />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="usageCount"
-                      stroke="#8884d8"
-                      activeDot={{ r: 8 }}
-                      name="Usage Count"
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="totalCost"
-                      stroke="#82ca9d"
-                      name="Total Cost"
-                    />
-                  </LineChart>
-                ) : chartType === 'bar' ? (
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value, name) => {
-                        if (name === 'totalCost') return [formatCurrency(value), 'Total Cost'];
-                        return [value, name === 'usageCount' ? 'Usage Count' : name];
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="usageCount" fill="#8884d8" name="Usage Count" />
-                    <Bar dataKey="totalCost" fill="#82ca9d" name="Total Cost" />
-                  </BarChart>
-                ) : (
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={(entry) => `${entry.name}: ${entry.usageCount}`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="usageCount"
-                      name="Usage Count"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                )}
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="usageCount" stroke="#1976d2" strokeWidth={3} dot={{ r: 6 }} name="Units Used" />
+                  <Line type="monotone" dataKey="totalCost" stroke="#4caf50" strokeWidth={3} dot={{ r: 6 }} name="Expenditure" />
+                </LineChart>
               </ResponsiveContainer>
             </Box>
+          )}
 
-            <Stack direction="row" spacing={4} sx={{ mt: 2 }}>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  Total Usage Count
-                </Typography>
-                <Typography variant="h6">
-                  {chartData.reduce((sum, item) => sum + (item.usageCount || 0), 0)}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  Total Cost
-                </Typography>
-                <Typography variant="h6">
-                  {formatCurrency(chartData.reduce((sum, item) => sum + (item.totalCost || 0), 0))}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  Data Points
-                </Typography>
-                <Typography variant="h6">
-                  {chartData.length}
-                </Typography>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
-
-      {showStockFlow && stockFlowData && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Stock Flow Analysis - {stockFlowData.categoryName || 'Selected Category'}
-            </Typography>
-            <Typography variant="body2" color="textSecondary" gutterBottom>
-              Total Parts: {stockFlowData.totalParts || 0} |
-              Active Parts: {stockFlowData.activeParts || 0}
-            </Typography>
-
-            {/* Stock Flow Chart */}
-            <Box sx={{ height: 300, width: '100%', mb: 3 }}>
+          {showStockFlow && stockFlowData && (
+            <Box sx={{ height: 350, mt: 4, width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={stockFlowData.flowData}
-                  layout="vertical"
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="partName" width={150} />
-                  <Tooltip
-                    formatter={(value, name) => {
-                      if (name === 'usageRate') return [value.toFixed(2), 'Usage Rate (per month)'];
-                      return [value, name === 'currentStock' ? 'Current Stock' : 'Total Used'];
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="currentStock" fill="#8884d8" name="Current Stock" />
-                  <Bar dataKey="totalUsed" fill="#82ca9d" name="Total Used" />
+                <BarChart data={stockFlowData.flowData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="partName" width={120} axisLine={false} tickLine={false} />
+                  <RechartsTooltip />
+                  <Bar dataKey="currentStock" fill="#1976d2" radius={[0, 4, 4, 0]} name="In Stock" />
+                  <Bar dataKey="totalUsed" fill="#ff9800" radius={[0, 4, 4, 0]} name="Historical Use" />
                 </BarChart>
               </ResponsiveContainer>
             </Box>
+          )}
+        </CardContent>
+      </Card>
 
-            {/* Stock Flow Table */}
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Part Code</TableCell>
-                    <TableCell>Part Name</TableCell>
-                    <TableCell align="center">Current Stock</TableCell>
-                    <TableCell align="center">Total Used</TableCell>
-                    <TableCell align="center">Usage Rate/Month</TableCell>
-                    <TableCell>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(stockFlowData.flowData || []).map((part, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{part.partCode}</TableCell>
-                      <TableCell>{part.partName}</TableCell>
-                      <TableCell align="center">{part.currentStock}</TableCell>
-                      <TableCell align="center">{part.totalUsed}</TableCell>
-                      <TableCell align="center">{part.usageRate?.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={part.currentStock <= 10 ? 'Low Stock' : 'In Stock'}
-                          size="small"
-                          color={part.currentStock <= 10 ? 'error' : 'success'}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Usage Records Table */}
-      <Paper sx={{ mb: 3 }}>
+      {/* Usage History Table */}
+      <Paper sx={{ borderRadius: 3, overflow: 'hidden' }} elevation={3}>
+        <Box sx={{ p: 2, bgcolor: 'rgba(25, 118, 210, 0.04)', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <HistoryIcon color="primary" />
+          <Typography variant="h6" fontWeight="bold">Consumption Registry</Typography>
+        </Box>
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell>Usage Number</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Part</TableCell>
-                <TableCell>Quantity</TableCell>
-                <TableCell>Unit Cost</TableCell>
-                <TableCell>Total Cost</TableCell>
-                <TableCell>Vehicle</TableCell>
-                <TableCell>Technician</TableCell>
-                <TableCell>Actions</TableCell>
+              <TableRow sx={{ background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)' }}>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Doc ID</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Component</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Units</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Valuation</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Assigned Tech</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Date</TableCell>
+                <TableCell align="center" sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {usages.map((usage) => (
                 <TableRow key={usage.id} hover>
-                  <TableCell>{usage.usageNumber}</TableCell>
-                  <TableCell>{formatDate(usage.usageDate)}</TableCell>
+                  <TableCell><Typography variant="body2" fontWeight="bold">{usage.usageNumber}</Typography></TableCell>
                   <TableCell>
                     <Box>
-                      <Typography variant="body2">{usage.sparePartCode || 'N/A'}</Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {usage.sparePartName || 'N/A'}
-                      </Typography>
+                      <Typography variant="body2" fontWeight="bold">{usage.sparePartName}</Typography>
+                      <Typography variant="caption" color="textSecondary">{usage.sparePartCode}</Typography>
                     </Box>
                   </TableCell>
-                  <TableCell>{usage.quantityUsed || 0}</TableCell>
-                  <TableCell>{formatCurrency(usage.unitPrice)}</TableCell>
+                  <TableCell>{usage.quantityUsed}</TableCell>
                   <TableCell>{formatCurrency(usage.totalCost)}</TableCell>
                   <TableCell>
-                    {usage.vehicleInfo ? (
-                      <Typography variant="body2">
-                        {usage.vehicleInfo}
-                      </Typography>
-                    ) : (
-                      <Typography variant="caption" color="textSecondary">
-                        Not linked
-                      </Typography>
-                    )}
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Avatar sx={{ width: 24, height: 24, fontSize: 12 }}>{usage.technicianName?.charAt(0)}</Avatar>
+                      <Typography variant="body2">{usage.technicianName || '---'}</Typography>
+                    </Stack>
                   </TableCell>
-                  <TableCell>{usage.technicianName || '-'}</TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenViewDialog(usage)}
-                        title="View Details"
-                      >
-                        <ViewIcon fontSize="small" />
-                      </IconButton>
-
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteUsage(usage.id)}
-                        title="Delete"
-                        color="error"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                  <TableCell>{formatDate(usage.usageDate)}</TableCell>
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <IconButton size="small" color="primary" onClick={() => { setSelectedUsage(usage); setOpenViewDialog(true); }} sx={{ bgcolor: 'primary.light', color: 'white', '&:hover': { bgcolor: 'primary.main' } }}><ViewIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" color="error" onClick={() => { if (window.confirm('Erase this record?')) sparePartUsageService.deleteUsage(usage.id).then(fetchData) }} sx={{ bgcolor: 'error.light', color: 'white', '&:hover': { bgcolor: 'error.main' } }}><DeleteIcon fontSize="small" /></IconButton>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -769,240 +455,84 @@ const UsagePage = () => {
         </TableContainer>
       </Paper>
 
-      {/* Create Usage Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>Record Spare Part Usage</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                select
-                fullWidth
-                label="Spare Part *"
-                value={formData.sparePartId}
-                onChange={(e) => handleFormChange('sparePartId', e.target.value)}
-                required
-              >
-                <MenuItem value="">Select Spare Part</MenuItem>
-                {spareParts.map((part) => (
-                  <MenuItem key={part.id} value={part.id}>
-                    {part.partCode} - {part.partName}
-                    {part.quantity !== undefined && ` (Stock: ${part.quantity})`}
-                  </MenuItem>
-                ))}
+      {/* Record Usage Dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" fontWeight="bold">Record Spare Part Consumption</Typography>
+          <IconButton onClick={() => setOpenDialog(false)}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={3} sx={{ pt: 1 }}>
+            <Grid item xs={12} md={8}>
+              <TextField select fullWidth label="Select Spare Part" value={formData.sparePartId} onChange={(e) => handleFormChange('sparePartId', e.target.value)}>
+                {spareParts.map(p => <MenuItem key={p.id} value={p.id}>{p.partCode} - {p.partName} (Stock: {p.quantity})</MenuItem>)}
               </TextField>
-
-              <TextField
-                fullWidth
-                type="number"
-                label="Quantity *"
-                value={formData.quantityUsed}
-                onChange={(e) => handleFormChange('quantityUsed', parseInt(e.target.value) || 0)}
-                required
-                inputProps={{ min: 1 }}
-              />
-            </Stack>
-
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Unit Price *"
-                value={formData.unitPrice}
-                onChange={(e) => handleFormChange('unitPrice', parseFloat(e.target.value) || 0)}
-                required
-                inputProps={{ min: 0, step: 0.01 }}
-              />
-
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body2" color="textSecondary">
-                  Total Cost: {formatCurrency(formData.quantityUsed * formData.unitPrice)}
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                select
-                fullWidth
-                label="Service Record (Optional)"
-                value={formData.serviceRecordId}
-                onChange={(e) => handleFormChange('serviceRecordId', e.target.value)}
-              >
-                <MenuItem value="">No Service Record</MenuItem>
-                {serviceRecords.map((record) => (
-                  <MenuItem key={record.id} value={record.id}>
-                    {record.recordId} - {record.vehicleInfo || 'N/A'}
-                  </MenuItem>
-                ))}
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField fullWidth type="number" label="Quantity to Use" value={formData.quantityUsed} onChange={(e) => setFormData(p => ({ ...p, quantityUsed: e.target.value }))} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField select fullWidth label="Service Ticket Reference" value={formData.serviceRecordId} onChange={(e) => handleFormChange('serviceRecordId', e.target.value)}>
+                <MenuItem value="">Direct Use (No Ticket)</MenuItem>
+                {serviceRecords.map(sr => <MenuItem key={sr.id} value={sr.id}>{sr.serviceNumber} - {sr.vehiclePlate}</MenuItem>)}
               </TextField>
-
-              <TextField
-                select
-                fullWidth
-                label="Vehicle (Optional)"
-                value={formData.vehicleId}
-                onChange={(e) => handleFormChange('vehicleId', e.target.value)}
-              >
-                <MenuItem value="">No Vehicle</MenuItem>
-                {vehicles.map((vehicle) => (
-                  <MenuItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.vehicleNumber} - {vehicle.brand} {vehicle.model}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Stack>
-
-            <TextField
-              fullWidth
-              label="Technician Name"
-              value={formData.technicianName}
-              onChange={(e) => handleFormChange('technicianName', e.target.value)}
-            />
-
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="Notes"
-              value={formData.notes}
-              onChange={(e) => handleFormChange('notes', e.target.value)}
-            />
-          </Stack>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField fullWidth label="Responsible Technician" value={formData.technicianName} onChange={(e) => setFormData(p => ({ ...p, technicianName: e.target.value }))} />
+            </Grid>
+            <Grid item xs={12}><TextField fullWidth multiline rows={2} label="Usage Rationale / Notes" value={formData.notes} onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))} /></Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            Record Usage
-          </Button>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setOpenDialog(false)} variant="outlined">Discard</Button>
+          <Button onClick={handleSubmit} variant="contained" sx={{ background: 'linear-gradient(45deg, #1976d2 30%, #21CBF3 90%)' }}>Confirm Consumption</Button>
         </DialogActions>
       </Dialog>
 
-      {/* View Usage Dialog */}
-      <Dialog open={openViewDialog} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>
-        {selectedUsage && (
-          <>
-            <DialogTitle>
-              Usage Details: {selectedUsage.usageNumber}
-            </DialogTitle>
-            <DialogContent>
-              <Stack spacing={2} sx={{ mt: 1 }}>
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Usage Number
-                    </Typography>
-                    <Typography variant="body1">
-                      {selectedUsage.usageNumber}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Date
-                    </Typography>
-                    <Typography variant="body1">
-                      {formatDate(selectedUsage.usageDate)}
-                    </Typography>
-                  </Box>
-                </Stack>
-
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Spare Part
-                    </Typography>
-                    <Typography variant="body1">
-                      {selectedUsage.sparePartCode} - {selectedUsage.sparePartName}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 0.5 }}>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Quantity Used
-                    </Typography>
-                    <Typography variant="body1">
-                      {selectedUsage.quantityUsed}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 0.5 }}>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Unit Price
-                    </Typography>
-                    <Typography variant="body1">
-                      {formatCurrency(selectedUsage.unitPrice)}
-                    </Typography>
-                  </Box>
-                </Stack>
-
-                <Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Total Cost
-                  </Typography>
-                  <Typography variant="body1" fontWeight="bold">
-                    {formatCurrency(selectedUsage.totalCost)}
-                  </Typography>
+      {/* Details View */}
+      <Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">Usage Details # {selectedUsage?.usageNumber}</Typography>
+          <IconButton onClick={() => setOpenViewDialog(false)}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedUsage && (
+            <Stack spacing={2.5}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography color="textSecondary">Spare Part:</Typography>
+                <Typography fontWeight="bold">{selectedUsage.sparePartName} ({selectedUsage.sparePartCode})</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography color="textSecondary">Quantity Extracted:</Typography>
+                <Typography fontWeight="bold">{selectedUsage.quantityUsed} Units</Typography>
+              </Box>
+              <Divider />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography color="textSecondary">Assigned Vehicle:</Typography>
+                <Typography fontWeight="bold">{selectedUsage.vehicleInfo || 'General Inventory Use'}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography color="textSecondary">Technician:</Typography>
+                <Typography fontWeight="bold">{selectedUsage.technicianName || 'Standard Staff'}</Typography>
+              </Box>
+              <Divider />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="h6">Economic Value:</Typography>
+                <Typography variant="h6" color="primary">{formatCurrency(selectedUsage.totalCost)}</Typography>
+              </Box>
+              {selectedUsage.notes && (
+                <Box sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 2, borderRadius: 2 }}>
+                  <Typography variant="caption" color="textSecondary">OPERATIONAL NOTES</Typography>
+                  <Typography variant="body2">{selectedUsage.notes}</Typography>
                 </Box>
-
-                {selectedUsage.vehicleInfo && (
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Vehicle
-                    </Typography>
-                    <Typography variant="body1">
-                      {selectedUsage.vehicleInfo}
-                    </Typography>
-                  </Box>
-                )}
-
-                {selectedUsage.technicianName && (
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Technician
-                    </Typography>
-                    <Typography variant="body1">
-                      {selectedUsage.technicianName}
-                    </Typography>
-                  </Box>
-                )}
-
-                {selectedUsage.notes && (
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">
-                      Notes
-                    </Typography>
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                      {selectedUsage.notes}
-                    </Typography>
-                  </Box>
-                )}
-
-                <Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Recorded On
-                  </Typography>
-                  <Typography variant="body1">
-                    {formatDate(selectedUsage.createdAt)}
-                  </Typography>
-                </Box>
-              </Stack>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseViewDialog}>Close</Button>
-            </DialogActions>
-          </>
-        )}
+              )}
+            </Stack>
+          )}
+        </DialogContent>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>{snackbar.message}</Alert>
       </Snackbar>
     </Container>
   );

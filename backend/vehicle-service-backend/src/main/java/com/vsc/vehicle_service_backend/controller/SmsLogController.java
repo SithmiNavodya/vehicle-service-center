@@ -17,7 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/sms-log")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:8080"}) // Allow both ports
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:8080"}) // Allow these ports
 public class SmsLogController {
 
     @Autowired

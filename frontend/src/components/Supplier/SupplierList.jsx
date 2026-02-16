@@ -1,117 +1,187 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { LoadingSpinner, SearchBar } from '../common/common';
-import SupplierForm from './SupplierForm';
-import SupplierCard from './SupplierCard';
+// src/components/Supplier/SupplierList.jsx
+import React from 'react';
+import {
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  IconButton,
+  Chip,
+  Stack,
+  Avatar,
+  Divider,
+  Tooltip,
+  CircularProgress,
+  Paper,
+  Button
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Business as BusinessIcon,
+  Store as StoreIcon,
+  LocationOn as MapPinIcon,
+  Assignment as CodeIcon
+} from '@mui/icons-material';
 
-const SupplierList = ({
-  suppliers,
-  loading,
-  onSearch,
-  onCreate,
-  onUpdate,
-  onDelete,
-}) => {
-  const [showForm, setShowForm] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState(null);
-
-  const handleEdit = (supplier) => {
-    setEditingSupplier(supplier);
-    setShowForm(true);
-  };
-
-  const handleFormSubmit = async (supplierData) => {
-    try {
-      if (editingSupplier) {
-        await onUpdate(editingSupplier.id, supplierData);
-      } else {
-        await onCreate(supplierData);
-      }
-      setShowForm(false);
-      setEditingSupplier(null);
-    } catch (error) {
-      console.error('Error saving supplier:', error);
-    }
-  };
-
-  const handleFormClose = () => {
-    setShowForm(false);
-    setEditingSupplier(null);
-  };
-
+const SupplierList = ({ suppliers, onEdit, onDelete, loading }) => {
   if (loading) {
-    return <LoadingSpinner text="Loading suppliers..." />;
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10, gap: 2 }}>
+        <CircularProgress size={40} />
+        <Typography color="textSecondary">Fetching supplier records...</Typography>
+      </Box>
+    );
+  }
+
+  if (!suppliers || suppliers.length === 0) {
+    return (
+      <Paper elevation={0} sx={{
+        textAlign: 'center',
+        py: 10,
+        border: '1px dashed #ccc',
+        borderRadius: 4,
+        backgroundColor: 'rgba(0,0,0,0.02)'
+      }}>
+        <BusinessIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+        <Typography variant="h6" color="textSecondary" gutterBottom>No Partners Found</Typography>
+        <Typography variant="body2" color="textSecondary">Register a new supplier to start managing inventory procurement</Typography>
+      </Paper>
+    );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Suppliers</h2>
-          <p className="text-gray-600">Manage your parts suppliers</p>
-        </div>
-
-        <div className="flex items-center space-x-3 w-full md:w-auto">
-          <SearchBar
-            onSearch={onSearch}
-            placeholder="Search suppliers..."
-          />
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+    <Grid container spacing={3}>
+      {suppliers.map((supplier) => (
+        <Grid item xs={12} sm={6} md={4} key={supplier.id}>
+          <Card
+            elevation={0}
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 4,
+              border: '1px solid #eef2f6',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              '&:hover': {
+                transform: 'translateY(-8px)',
+                boxShadow: '0 12px 30px rgba(0,0,0,0.06)',
+                borderColor: 'primary.light'
+              }
+            }}
           >
-            <Plus size={20} className="mr-2" />
-            Add Supplier
-          </button>
-        </div>
-      </div>
+            <Box sx={{ p: 3, pb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Chip
+                  label={supplier.supplierCode || `S_${supplier.id}`}
+                  sx={{
+                    fontWeight: 'bold',
+                    borderRadius: 1.5,
+                    backgroundColor: 'primary.light',
+                    color: 'white',
+                    fontSize: '0.75rem'
+                  }}
+                />
+                <Chip
+                  label="Registered Supplier"
+                  size="small"
+                  variant="outlined"
+                  icon={<StoreIcon sx={{ fontSize: '1rem !important' }} />}
+                  sx={{ borderRadius: 1.5, fontWeight: 500 }}
+                />
+              </Box>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="text-sm text-blue-600 font-medium">Total Suppliers</div>
-          <div className="text-2xl font-bold text-blue-700">{suppliers.length}</div>
-        </div>
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="text-sm text-green-600 font-medium">Active Suppliers</div>
-          <div className="text-2xl font-bold text-green-700">{suppliers.length}</div>
-        </div>
-      </div>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                <Avatar sx={{ bgcolor: 'rgba(25,118,210,0.1)', color: 'primary.main', width: 48, height: 48 }}>
+                  <StoreIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" fontWeight="800" sx={{ lineHeight: 1.2 }}>
+                    {supplier.supplierName}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" fontWeight="500">
+                    Inventory Partner
+                  </Typography>
+                </Box>
+              </Stack>
 
-      {showForm && (
-        <SupplierForm
-          supplier={editingSupplier}
-          onSubmit={handleFormSubmit}
-          onClose={handleFormClose}
-        />
-      )}
+              <Divider sx={{ my: 2, opacity: 0.6 }} />
 
-      {suppliers.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="h-16 w-16 text-gray-300 mx-auto mb-4">📞</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No suppliers found</h3>
-          <p className="text-gray-500">Get started by adding your first supplier</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus size={16} className="mr-2" />
-            Add Supplier
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {suppliers.map((supplier) => (
-            <SupplierCard
-              key={supplier.id}
-              supplier={supplier}
-              onEdit={() => handleEdit(supplier)}
-              onDelete={() => onDelete(supplier.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'secondary.light', fontSize: '0.75rem' }}>
+                    <EmailIcon sx={{ fontSize: '1.1rem' }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" color="textSecondary" display="block">Email Address</Typography>
+                    <Typography variant="body2" fontWeight="700">{supplier.email || 'N/A'}</Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'success.light', fontSize: '0.75rem' }}>
+                    <PhoneIcon sx={{ fontSize: '1rem' }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" color="textSecondary" display="block">Emergency Contact</Typography>
+                    <Typography variant="body2" fontWeight="700">{supplier.phone || 'N/A'}</Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'start', gap: 1.5 }}>
+                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'info.light', fontSize: '0.75rem' }}>
+                    <MapPinIcon sx={{ fontSize: '1.1rem' }} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" color="textSecondary" display="block">Business Address</Typography>
+                    <Typography variant="body2" fontWeight="700" sx={{ lineHeight: 1.4 }}>
+                      {supplier.address || 'Location Not Recorded'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Box sx={{ mt: 'auto', p: 3, pt: 1 }}>
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  size="small"
+                  onClick={() => onEdit(supplier)}
+                  fullWidth
+                  variant="outlined"
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                >
+                  Modify
+                </Button>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => {
+                    if (window.confirm(`Permanently decommission supplier "${supplier.supplierName}"?`)) {
+                      onDelete(supplier.id);
+                    }
+                  }}
+                  fullWidth
+                  variant="contained"
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    bgcolor: 'error.main',
+                    boxShadow: 'none'
+                  }}
+                >
+                  Archive
+                </Button>
+              </Stack>
+            </Box>
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
   );
 };
 
