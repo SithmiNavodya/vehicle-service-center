@@ -17,24 +17,35 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Customer addCustomer(Customer customer) {
-
         if (customerRepository.existsByEmail(customer.getEmail())) {
             throw new RuntimeException("Email already exists!");
         }
-
         return customerRepository.save(customer);
     }
 
     @Override
     public Customer updateCustomer(Long id, Customer updatedCustomer) {
-
         Customer existing = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        existing.setName(updatedCustomer.getName());
-        existing.setEmail(updatedCustomer.getEmail());
-        existing.setPhone(updatedCustomer.getPhone());
-        existing.setAddress(updatedCustomer.getAddress());
+        // Only update fields that are provided (not null)
+        if (updatedCustomer.getName() != null) {
+            existing.setName(updatedCustomer.getName());
+        }
+        if (updatedCustomer.getEmail() != null) {
+            // Check if new email already exists (and it's not the same customer)
+            if (!existing.getEmail().equals(updatedCustomer.getEmail()) &&
+                    customerRepository.existsByEmail(updatedCustomer.getEmail())) {
+                throw new RuntimeException("Email already exists!");
+            }
+            existing.setEmail(updatedCustomer.getEmail());
+        }
+        if (updatedCustomer.getPhone() != null) {
+            existing.setPhone(updatedCustomer.getPhone());
+        }
+        if (updatedCustomer.getAddress() != null) {
+            existing.setAddress(updatedCustomer.getAddress());
+        }
 
         return customerRepository.save(existing);
     }
@@ -55,4 +66,3 @@ public class CustomerServiceImpl implements CustomerService {
         return customerRepository.findAll();
     }
 }
-

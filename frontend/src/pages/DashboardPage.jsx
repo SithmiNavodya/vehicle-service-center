@@ -80,34 +80,19 @@ const DashboardPage = () => {
       let lowStockCount = 0;
 
       try {
-        // Try known inventory endpoints
-        const inventoryEndpoints = [
-          '/v1/spare-parts',
-          '/spare-parts',
-          '/spareparts',
-          '/inventory'
-        ];
-
-        for (const endpoint of inventoryEndpoints) {
-          try {
-            console.log(`Trying endpoint: ${endpoint}`);
-            const inventoryRes = await apiClient.get(endpoint);
-            const data = extractDataFromResponse(inventoryRes.data);
-            if (Array.isArray(data) && data.length > 0) {
-              inventoryItems = data;
-              console.log(`Found ${data.length} items via ${endpoint}`);
-              break;
-            }
-          } catch (err) {
-            // Continue
-          }
+        // Use v1/spare-parts which is the correct endpoint
+        const inventoryRes = await apiClient.get('/v1/spare-parts');
+        const data = extractDataFromResponse(inventoryRes.data);
+        if (Array.isArray(data)) {
+          inventoryItems = data;
+          console.log(`Found ${data.length} items in inventory`);
         }
 
-        // Calculate low stock items
+        // Calculate low stock items using correct fields: quantity and minQuantity
         if (inventoryItems.length > 0) {
           lowStockCount = inventoryItems.filter(item => {
-            const quantity = item.quantity || item.stock || item.currentStock || item.availableQuantity || 0;
-            const minStock = item.minStock || item.minimumStock || item.reorderLevel || 5;
+            const quantity = item.quantity ?? 0;
+            const minStock = item.minQuantity ?? 5;
             return quantity <= minStock;
           }).length;
         }
@@ -118,15 +103,21 @@ const DashboardPage = () => {
       // 5. Calculate Revenue
       let monthlyRevenue = 0;
       let todayRevenue = 0;
-      const todayString = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
 
       services.forEach(service => {
-        const cost = parseFloat(service.totalAmount || service.totalCost || service.price || 0);
+        // Use totalCost field
+        const cost = parseFloat(service.totalCost || service.totalAmount || service.price || 0);
         monthlyRevenue += cost;
 
-        const dateField = service.serviceDate || service.createdAt || service.createdDate;
-        if (dateField && dateField.split('T')[0] === todayString) {
-          todayRevenue += cost;
+        // Correctly handle date comparison
+        const dateField = service.serviceDate || service.createdAt;
+        if (dateField) {
+          const serviceDateStr = dateField.split('T')[0];
+          if (serviceDateStr === todayString) {
+            todayRevenue += cost;
+          }
         }
       });
 
@@ -296,8 +287,8 @@ const DashboardPage = () => {
                     <p className="font-medium text-gray-800">{getServiceName(service)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`px-2 py-1 text-xs rounded-full ${getServiceStatus(service) === 'completed' ? 'bg-green-100 text-green-800' :
-                          getServiceStatus(service) === 'in progress' || getServiceStatus(service) === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                            'bg-yellow-100 text-yellow-800'
+                        getServiceStatus(service) === 'in progress' || getServiceStatus(service) === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          'bg-yellow-100 text-yellow-800'
                         }`}>
                         {getServiceStatus(service)}
                       </span>
