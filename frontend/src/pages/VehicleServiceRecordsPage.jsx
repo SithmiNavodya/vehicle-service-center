@@ -65,25 +65,52 @@ const VehicleServiceRecordsPage = () => {
 
   useEffect(() => {
     const loadVehicleData = async () => {
-      if (!vehicleId || vehicles.length === 0 || services.length === 0) return;
+      if (!vehicleId) return;
+
       const vid = parseInt(vehicleId);
-      const v = vehicles.find(x => x.id === vid);
-      setVehicle(v);
-      if (!v) return;
+      console.log('[VehicleRecords] Loading data for vehicleId:', vid);
+
+      // Try to find vehicle if list exists
+      if (vehicles.length > 0) {
+        const v = vehicles.find(x => x.id === vid);
+        if (v) {
+          console.log('[VehicleRecords] Found vehicle:', v);
+          setVehicle(v);
+        }
+      }
 
       try {
+        console.log('[VehicleRecords] Calling fetchServiceRecordsByVehicle...');
         const apiRecords = await fetchServiceRecordsByVehicle(vid);
-        const enriched = apiRecords.map(r => {
+        console.log('[VehicleRecords] API Records count:', apiRecords.length);
+
+        let finalRecords = apiRecords;
+        if (apiRecords.length === 0 && allRecords.length > 0) {
+          console.log('[VehicleRecords] API returned empty, trying fallback from allRecords...');
+          finalRecords = allRecords.filter(r => (Number(r.vehicleId) === vid || Number(r.vehicle?.id) === vid));
+          console.log('[VehicleRecords] Fallback count:', finalRecords.length);
+        }
+
+        const enriched = finalRecords.map(r => {
           const s = services.find(sx => sx.id === r.serviceId);
-          return { ...r, service: s, serviceName: s ? (s.serviceName || s.name) : 'Standard Service' };
+          return {
+            ...r,
+            service: s,
+            serviceName: s ? (s.serviceName || s.name) : (r.serviceName || 'Standard Service')
+          };
         });
         setVehicleRecords(enriched);
       } catch (err) {
-        setVehicleRecords(allRecords.filter(r => r.vehicleId === vid));
+        console.error('[VehicleRecords] Error loading records:', err);
+        // Fallback filter
+        if (allRecords && allRecords.length > 0) {
+          console.log('[VehicleRecords] Falling back to local filter');
+          setVehicleRecords(allRecords.filter(r => (r.vehicleId === vid || r.vehicle?.id === vid)));
+        }
       }
     };
     loadVehicleData();
-  }, [vehicleId, vehicles, services, allRecords]);
+  }, [vehicleId, vehicles, services, allRecords, fetchServiceRecordsByVehicle]);
 
   const getStatusConfig = (status) => {
     const s = status?.toUpperCase();
@@ -224,7 +251,7 @@ const VehicleServiceRecordsPage = () => {
                       <Grid item xs={6} md={3}><Typography variant="caption" color="textSecondary" display="block">EXECUTION DATE</Typography><Typography variant="body2" fontWeight="500">{formatDate(record.serviceDate)}</Typography></Grid>
                       <Grid item xs={6} md={3}><Typography variant="caption" color="textSecondary" display="block">NEXT RECALL</Typography><Typography variant="body2" fontWeight="bold" color="primary.main">{formatDate(record.nextServiceDate)}</Typography></Grid>
                       <Grid item xs={6} md={3}><Typography variant="caption" color="textSecondary" display="block">UNIT VALUE</Typography><Typography variant="body2" fontWeight="bold" color="success.main">Rs. {parseFloat(record.totalAmount || record.service?.price || 0).toLocaleString()}</Typography></Grid>
-                      <Grid item xs={6} md={3}><Typography variant="caption" color="textSecondary" display="block">ASSET TAG</Typography><Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><CarIcon sx={{ fontSize: 14, color: '#666' }} /><Typography variant="caption" fontWeight="bold">LKR-042</Typography></Box></Grid>
+                      <Grid item xs={6} md={3}><Typography variant="caption" color="textSecondary" display="block">ASSET TAG</Typography><Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><CarIcon sx={{ fontSize: 14, color: '#666' }} /><Typography variant="caption" fontWeight="bold">{vehicle.vehicleNumber}</Typography></Box></Grid>
                     </Grid>
                     {record.notes && (
                       <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2, display: 'flex', gap: 1.5 }}>

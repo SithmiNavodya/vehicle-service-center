@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 
 const VehicleList = ({ vehicles, onEdit, onDelete, onViewRecords, loading, error }) => {
+  console.log('[VehicleList] Rendering with data:', vehicles);
   if (loading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10, gap: 2 }}>
@@ -113,10 +114,10 @@ const VehicleList = ({ vehicles, onEdit, onDelete, onViewRecords, loading, error
               <TableCell>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem', bgcolor: 'secondary.main' }}>
-                    {vehicle.customer?.name?.charAt(0) || '?'}
+                    {vehicle.customerName?.charAt(0) || vehicle.customer?.name?.charAt(0) || '?'}
                   </Avatar>
                   <Typography variant="body2">
-                    {vehicle.customer?.name || 'Unknown'}
+                    {vehicle.customerName || vehicle.customer?.name || 'Unknown'}
                   </Typography>
                 </Stack>
               </TableCell>

@@ -53,7 +53,7 @@ const VehicleStats = ({ vehicles }) => {
     },
     {
       title: 'UNIQUE OWNERS',
-      value: new Set(vehicles.map(v => v.customer?.id)).size,
+      value: new Set(vehicles.map(v => v.customerId || v.customer?.id)).size,
       icon: <PeopleIcon />,
       color: '#8e24aa',
       bg: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)'

@@ -52,12 +52,22 @@ export const useVehicles = () => {
     setLoading(true);
     setError(null);
     try {
-      const updatedVehicle = await vehicleService.updateVehicle(id, vehicleData);
-      setVehicles(prev => prev.map(vehicle =>
-        vehicle.id === id ? updatedVehicle : vehicle
-      ));
-      return updatedVehicle;
+      console.log('[useVehicles] >>> UPDATE START');
+      console.log('[useVehicles] Target ID:', id, '(', typeof id, ')');
+      console.log('[useVehicles] Payload to Service:', vehicleData);
+
+      const updated = await vehicleService.updateVehicle(id, vehicleData);
+      console.log('[useVehicles] API Response Recieved:', updated);
+
+      setVehicles(prev => {
+        const found = prev.some(v => v.id === id);
+        console.log('[useVehicles] Pre-Update State Size:', prev.length, 'Target Found?', found);
+        const newList = prev.map(v => v.id === id ? updated : v);
+        return newList;
+      });
+      return updated;
     } catch (err) {
+      console.error('[useVehicles] UPDATE FAILED:', err);
       setError(err.message || 'Failed to update vehicle');
       throw err;
     } finally {

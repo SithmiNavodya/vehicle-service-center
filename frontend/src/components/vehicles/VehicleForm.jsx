@@ -38,17 +38,23 @@ const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
 
   useEffect(() => {
     if (vehicle && isEditing) {
+      console.log('[VehicleForm] Editing vehicle struct:', vehicle);
+      // Normalize CID to Number
+      const rawCid = vehicle.customerId || vehicle.customer?.id;
+      const cid = rawCid ? Number(rawCid) : '';
+      console.log('[VehicleForm] Normalized customerId for state:', cid, 'Type:', typeof cid);
+
       setFormData({
         vehicleNumber: vehicle.vehicleNumber || '',
         brand: vehicle.brand || '',
         model: vehicle.model || '',
         vehicleType: vehicle.vehicleType || '',
-        customerId: vehicle.customer?.id || ''
+        customerId: cid
       });
     }
   }, [vehicle, isEditing]);
 
-  const vehicleTypes = ['Car', 'Bike', 'SUV', 'Truck', 'Van', 'Bus', 'Other'];
+  const vehicleTypes = ['Car', 'Bike', 'Hatchback', 'Sedan', 'SUV', 'Truck', 'Van', 'Bus', 'Other'];
 
   const validateForm = () => {
     const newErrors = {};
@@ -75,7 +81,10 @@ const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Cast customerId to Number for comparison/API
+    const finalValue = name === 'customerId' ? (value === '' ? '' : Number(value)) : value;
+
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -84,7 +93,15 @@ const VehicleForm = ({ vehicle, customers, onSubmit, onCancel, isEditing }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(formData);
+      // Final sanitization: ensure customerId is a number
+      const submissionData = {
+        ...formData,
+        customerId: Number(formData.customerId)
+      };
+      console.log('[VehicleForm] Submitting sanitized data:', submissionData);
+      onSubmit(submissionData);
+    } else {
+      console.warn('[VehicleForm] Validation failed:', errors);
     }
   };
 
