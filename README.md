@@ -258,21 +258,19 @@ The system supports:
 
 ```
 vehicle-service-center/
-│
 ├── vehicle-service-backend/
-│   ├── controller/
-│   ├── service/
-│   ├── repository/
-│   ├── entity/
-│   ├── security/
-│   └── config/
-│
+│ ├── controller/
+│ ├── service/
+│ ├── repository/
+│ ├── entity/
+│ ├── security/
+│ └── config/
 └── frontend/
-    ├── components/
-    ├── pages/
-    ├── services/
-    ├── hooks/
-    └── utils/
+├── components/
+├── pages/
+├── services/
+├── hooks/
+└── utils/
 ```
 
 
