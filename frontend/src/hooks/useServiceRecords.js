@@ -23,52 +23,60 @@ export const useServiceRecords = () => {
   }, []);
 
   // Fetch service records by vehicle ID
-//  const fetchServiceRecordsByVehicle = useCallback(async (vehicleId) => {
-//    setLoading(true);
-//    setError(null);
-//    try {
-//      const data = await serviceRecordService.getServiceRecordsByVehicleId(vehicleId);
-//      return data;
-//    } catch (err) {
-//      setError(err.message || 'Failed to fetch service records');
-//      throw err;
-//    } finally {
-//      setLoading(false);
-//    }
-//  }, []);
+  //  const fetchServiceRecordsByVehicle = useCallback(async (vehicleId) => {
+  //    setLoading(true);
+  //    setError(null);
+  //    try {
+  //      const data = await serviceRecordService.getServiceRecordsByVehicleId(vehicleId);
+  //      return data;
+  //    } catch (err) {
+  //      setError(err.message || 'Failed to fetch service records');
+  //      throw err;
+  //    } finally {
+  //      setLoading(false);
+  //    }
+  //  }, []);
 
 
-// Fetch service records by vehicle ID - FIXED VERSION
-const fetchServiceRecordsByVehicle = useCallback(async (vehicleId) => {
-  setLoading(true);
-  setError(null);
-  try {
-    console.log('Fetching records for vehicle ID:', vehicleId);
+  // Fetch service records by vehicle ID - FIXED VERSION
+  const fetchServiceRecordsByVehicle = useCallback(async (vehicleId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('[useServiceRecords] Fetching records for vehicleId:', vehicleId);
 
-    // Make sure vehicleId is a number
-    const id = typeof vehicleId === 'string' ? parseInt(vehicleId) : vehicleId;
+      // Ensure numeric ID
+      const id = Number(vehicleId);
+      if (isNaN(id)) {
+        console.error('[useServiceRecords] Invalid vehicleId:', vehicleId);
+        return [];
+      }
 
-    const data = await serviceRecordService.getServiceRecordsByVehicleId(id);
+      const data = await serviceRecordService.getServiceRecordsByVehicleId(id);
+      console.log('[useServiceRecords] API Response:', data);
 
-    // Enrich the data with service and vehicle details
-    const enrichedData = data.map(record => ({
-      ...record,
-      // Add service if we have serviceId
-      service: services.find(s => s.id === record.serviceId) || null,
-      // Ensure vehicleId is properly set
-      vehicleId: record.vehicleId || id
-    }));
+      // Enrich the data with service and vehicle details
+      const enrichedData = data.map(record => {
+        const service = services.find(s => s.id === record.serviceId);
+        return {
+          ...record,
+          service: service || null,
+          serviceName: service ? (service.serviceName || service.name) : 'Standard Service',
+          // Ensure vehicleId is properly set for filtering if needed
+          vehicleId: record.vehicleId || id
+        };
+      });
 
-    console.log('Enriched vehicle records:', enrichedData);
-    return enrichedData;
-  } catch (err) {
-    console.error('Error fetching vehicle records:', err);
-    setError(err.message || 'Failed to fetch service records');
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-}, [services]); // Add services dependency
+      console.log('[useServiceRecords] Enriched Records:', enrichedData);
+      return enrichedData;
+    } catch (err) {
+      console.error('[useServiceRecords] Error fetching records:', err);
+      setError(err.message || 'Failed to fetch service records');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [services]);
 
 
   // Fetch all vehicles
@@ -158,35 +166,36 @@ const fetchServiceRecordsByVehicle = useCallback(async (vehicleId) => {
     }
   };
 
-//useEffect(() => {
-//  if (serviceRecords.length > 0) {
-//    console.log('First service record:', serviceRecords[0]);
-//    console.log('All service records:', serviceRecords);
-//  } else {
-//    console.log('No service records found');
-//  }
-//}, [serviceRecords]);
+  //useEffect(() => {
+  //  if (serviceRecords.length > 0) {
+  //    console.log('First service record:', serviceRecords[0]);
+  //    console.log('All service records:', serviceRecords);
+  //  } else {
+  //    console.log('No service records found');
+  //  }
+  //}, [serviceRecords]);
 
 
   useEffect(() => {
+    console.log('[useServiceRecords] Lifecycle: Initiating data fetch...');
     fetchServiceRecords();
     fetchVehicles();
     fetchServices();
   }, [fetchServiceRecords, fetchVehicles, fetchServices]);
 
   return {
-      serviceRecords,
-      vehicles,
-      services,
-      loading,
-      error,
-      fetchServiceRecords,
-      fetchServiceRecordsByVehicle,
-      fetchVehicles,
-      fetchServices,
-      createServiceRecord,
-      updateServiceRecord,
-      updateStatus,
-      deleteServiceRecord
-    };
+    serviceRecords,
+    vehicles,
+    services,
+    loading,
+    error,
+    fetchServiceRecords,
+    fetchServiceRecordsByVehicle,
+    fetchVehicles,
+    fetchServices,
+    createServiceRecord,
+    updateServiceRecord,
+    updateStatus,
+    deleteServiceRecord
+  };
 };

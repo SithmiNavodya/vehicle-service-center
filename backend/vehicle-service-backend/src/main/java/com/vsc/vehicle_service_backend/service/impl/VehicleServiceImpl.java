@@ -8,13 +8,17 @@ import com.vsc.vehicle_service_backend.repository.CustomerRepository;
 import com.vsc.vehicle_service_backend.repository.VehicleRepository;
 import com.vsc.vehicle_service_backend.service.VehicleService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
+@Slf4j
 public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository repository;
@@ -65,11 +69,15 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public VehicleResponse updateVehicle(Long id, VehicleRequest request) {
+        log.info("[VehicleService] Updating vehicle with id: {} to customerId: {}", id, request.getCustomerId());
+        
         Vehicle vehicle = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + id));
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new RuntimeException("Customer not found with id: " + request.getCustomerId()));
+
+        log.info("[VehicleService] Found vehicle: {} and customer: {}", vehicle.getVehicleNumber(), customer.getName());
 
         vehicle.setVehicleNumber(request.getVehicleNumber());
         vehicle.setBrand(request.getBrand());
@@ -78,6 +86,9 @@ public class VehicleServiceImpl implements VehicleService {
         vehicle.setCustomer(customer);
 
         Vehicle updatedVehicle = repository.save(vehicle);
+        log.info("[VehicleService] Save completed. Updated vehicle customer name: {}", 
+                updatedVehicle.getCustomer() != null ? updatedVehicle.getCustomer().getName() : "NULL");
+        
         return convertToResponse(updatedVehicle);
     }
 
