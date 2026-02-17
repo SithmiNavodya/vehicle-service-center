@@ -65,7 +65,15 @@ It allows administrators and users to:
 - xlsx (Excel export)
 - React Toastify
 
+### 🛠 Testing Tools
+- JUnit 5
+- Mockito
+- Spring MockMvc
+- AssertJ
+- H2 Database (Test DB)
+  
 ---
+
 
 #  System Features
 
@@ -84,7 +92,7 @@ It allows administrators and users to:
 - Add, update, delete vehicles
 - View service history per vehicle
   
-##📦 Inventory Management
+## 📦 Inventory Management
 -Add, update, and delete spare parts
 -Track available stock quantities
 -Automatic stock reduction after service usage
@@ -109,6 +117,11 @@ It allows administrators and users to:
 - CORS configured for frontend integration
 
 ---
+## 🧪 Testing
+- **Unit Tests:** Service layer testing with Mockito
+- **Integration Tests:** API endpoint testing with MockMvc
+- **Security Tests:** JWT authentication & validation
+
 
 # 🏗️ System Architecture
 
@@ -209,9 +222,12 @@ Frontend runs on:
 ```
 http://localhost:3000
 ```
-
+test run:
+```bash
+cd vehicle-service-backend
+mvn clean test
+----
 ---
-
 # 🔐 Authentication & Security
 
 - JWT secret-based token generation
