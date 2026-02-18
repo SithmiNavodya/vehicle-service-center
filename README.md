@@ -277,13 +277,13 @@ vehicle-service-center/
 ## 📸 Screenshots
 
 ### sparepart Page
-![sparePart Page](screenshots/VSC_sprParts.png)
+![sparePart Page](./screenshots/VSC_sprParts.png)
 
 ### Service Record Page
-![ServiceRecord Page](screenshots/VSC_servicerecord.png)
+![ServiceRecord Page](./screenshots/VSC_servicerecord.png)
 
 ### Inventory Page
-![Inventory Page](screenshots/VSC_inv.png)
+![Inventory Page](./screenshots/VSC_inv.png)
 
 
 
