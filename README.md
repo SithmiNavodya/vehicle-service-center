@@ -277,7 +277,7 @@ vehicle-service-center/
 ## 📸 Screenshots
 
 ### sparepart Page
-![sparePart Page](./screenshots/VSC_sprParts.png)
+![sparePart Page](./screenshots/spr.png)
 
 ### Service Record Page
 ![ServiceRecord Page](./screenshots/VSC_servicerecord.png)
